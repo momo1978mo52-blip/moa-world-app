@@ -23,7 +23,7 @@ window.addEventListener('popstate',e=>{
 // Replace the current launcher entry with the current in-app screen.
 setTimeout(()=>{if(!history.state?.moaNav)history.replaceState(navSnapshot(),'',location.href);},0);
 
-// ---- Profile photo support (kept separate from the face 0° master) ----
+// ---- Member confirmation icon support (kept separate from angle masters) ----
 const PROFILE_CATEGORY='プロフィール写真';
 
 function profileImageFor(images=[]){
@@ -33,7 +33,7 @@ function profileImageFor(images=[]){
 }
 
 function memberAvatarHtml(m,image,size=''){
-  if(image?.dataUrl)return `<img class="avatar ${size}" src="${esc(image.dataUrl)}" alt="${esc(m.name)}のプロフィール写真" loading="lazy">`;
+  if(image?.dataUrl)return `<img class="avatar ${size}" src="${esc(image.dataUrl)}" alt="${esc(m.name)}の確認用アイコン写真" loading="lazy">`;
   return `<div class="avatar ${size} avatar-placeholder">${esc(initials(m.name))}</div>`;
 }
 
@@ -57,48 +57,89 @@ renderMembers=async function(){
   document.querySelectorAll('[data-member]').forEach(b=>b.addEventListener('click',()=>{state.memberId=b.dataset.member;state.memberTab='profile';render()}));
 };
 
-const _profileMemberTabHtml=memberTabHtml;
-memberTabHtml=function(m,images,relations,schedules,prod){
-  if(state.memberTab!=='profile')return _profileMemberTabHtml(m,images,relations,schedules,prod);
-  const base=_profileMemberTabHtml(m,images,relations,schedules,prod);
-  const profile=profileImageFor(images);
+async function iconPhotoModal(memberId){
+  const m=await getOne('members',memberId);
+  if(!m){toast('人物が見つかりません');return;}
+  const images=(await activeImages()).filter(i=>i.memberId===memberId);
+  const current=profileImageFor(images);
   const faceFront=images.find(i=>i.category==='顔8方向'&&i.angle==='正面0°');
-  const photo=profile
-    ? `<div class="card profile-photo-card"><div class="row between"><b>プロフィール写真</b><button class="ghost-btn tiny" data-action="image-add">変更</button></div><img class="profile-photo" src="${esc(profile.dataUrl)}" alt="${esc(m.name)}のプロフィール写真"></div>`
-    : `<div class="card"><b>プロフィール写真</b><div class="tiny muted" style="margin-top:8px">まだ設定されていません。顔8方向の正面0°とは別に保存されます。</div><div class="actions"><button class="gold-btn" data-action="image-add">プロフィール写真を追加</button>${faceFront?`<button class="ghost-btn" data-move-profile="${faceFront.id}">今の正面0°画像をプロフィールへ移動</button>`:''}</div></div>`;
-  return photo+base;
-};
+  showModal('確認用アイコン写真',`<form id="iconPhotoForm" class="form">
+    <div class="icon-photo-note">人物一覧と、この画面の左上に表示する確認用写真です。顔8方向や角度画像には登録されません。</div>
+    ${current?`<img class="icon-photo-preview" src="${esc(current.dataUrl)}" alt="${esc(m.name)}の現在のアイコン写真">`:''}
+    <div class="field"><label>${current?'別の写真に変更':'写真を選ぶ'} *</label><input name="file" type="file" accept="image/*" required></div>
+    <button class="gold-btn" type="submit">${current?'アイコン写真を変更':'アイコン写真を設定'}</button>
+    ${!current&&faceFront?`<button class="ghost-btn" id="useFrontAsIcon" type="button">誤って正面0°に入れた写真をアイコンへ移す</button>`:''}
+  </form>`);
+  document.getElementById('iconPhotoForm').onsubmit=async e=>{
+    e.preventDefault();
+    const file=new FormData(e.currentTarget).get('file');
+    const dataUrl=await fileToDataURL(file);
+    if(current){
+      current.dataUrl=dataUrl;
+      current.updatedAt=now();
+      await put('images',current);
+      await log('アイコン写真変更','image',current.id,m.name);
+    }else{
+      const obj={id:uid('img'),memberId,category:PROFILE_CATEGORY,angle:'',status:'採用・安定',basis:'使用しない',memo:'人物確認用アイコン',dataUrl,createdAt:now(),updatedAt:now(),deletedAt:null};
+      await put('images',obj);
+      await log('アイコン写真設定','image',obj.id,m.name);
+    }
+    closeModal();
+    toast('確認用アイコン写真を保存しました');
+    renderMemberDetail(memberId);
+  };
+  const useFront=document.getElementById('useFrontAsIcon');
+  if(useFront)useFront.onclick=()=>moveImageToProfile(faceFront.id);
+}
 
 async function moveImageToProfile(imageId){
   const image=await getOne('images',imageId);
   if(!image||image.deletedAt){toast('画像が見つかりません');return;}
-  if(!confirm('この画像を「顔正面0°」から「プロフィール写真」へ移動しますか？'))return;
+  if(!confirm('誤って「顔正面0°」に入ったこの写真を、確認用アイコンへ移しますか？\n顔正面0°の枠からは外れます。'))return;
   image.category=PROFILE_CATEGORY;
   image.angle='';
   image.status='採用・安定';
   image.basis='使用しない';
+  image.memo=image.memo||'人物確認用アイコン';
   image.updatedAt=now();
   await put('images',image);
-  await log('画像の登録先変更','image',image.id,'顔正面0° → プロフィール写真');
-  toast('プロフィール写真へ移動しました');
+  await log('画像の登録先変更','image',image.id,'顔正面0° → 確認用アイコン');
+  closeModal();
+  toast('確認用アイコンへ移しました');
   renderMemberDetail(image.memberId);
 }
 
 const _profileRenderMemberDetail=renderMemberDetail;
-renderMemberDetail=async function(id){
+renderMemberDetail=async function iconRenderMemberDetail(id){
   await _profileRenderMemberDetail(id);
   const m=await getOne('members',id);
+  if(!m)return;
   const images=(await activeImages()).filter(i=>i.memberId===id);
   const profile=profileImageFor(images);
-  const avatar=document.querySelector('.detail-head .avatar');
-  if(m&&avatar&&profile)avatar.outerHTML=memberAvatarHtml(m,profile,'large');
-  document.querySelectorAll('[data-move-profile]').forEach(b=>b.onclick=()=>moveImageToProfile(b.dataset.moveProfile));
+  let avatar=document.querySelector('.detail-head .avatar');
+  if(!avatar)return;
+  if(profile){
+    avatar.outerHTML=memberAvatarHtml(m,profile,'large');
+    avatar=document.querySelector('.detail-head .avatar');
+  }
+  const picker=document.createElement('button');
+  picker.type='button';
+  picker.className='avatar-picker';
+  picker.setAttribute('aria-label',`${m.name}の確認用アイコン写真を${profile?'変更':'設定'}`);
+  picker.title='タップして確認用写真を設定';
+  avatar.replaceWith(picker);
+  picker.appendChild(avatar);
+  const badge=document.createElement('span');
+  badge.className='avatar-picker-badge';
+  badge.textContent=profile?'変更':'写真';
+  picker.appendChild(badge);
+  picker.onclick=()=>iconPhotoModal(id);
 };
 
 imageModal=async function(memberId,preferredCategory=''){
   const members=await activeMembers();
-  const defaultCategory=preferredCategory||(state.memberTab==='profile'?PROFILE_CATEGORY:'顔8方向');
-  const categories=[PROFILE_CATEGORY,'顔8方向','体型8方向',...ALBUMS];
+  const defaultCategory=preferredCategory||'顔8方向';
+  const categories=['顔8方向','体型8方向',...ALBUMS];
   showModal('画像を追加',`<form id="imageForm" class="form"><div class="field"><label>人物</label><select name="memberId" required>${members.map(m=>`<option value="${m.id}" ${m.id===memberId?'selected':''}>${esc(m.name)}</option>`).join('')}</select></div><div class="field"><label>画像 *</label><input name="file" type="file" accept="image/*" required></div><div class="field"><label>登録先</label><select name="category" id="imageCategory">${categories.map(x=>`<option ${x===defaultCategory?'selected':''}>${x}</option>`).join('')}</select><div id="imageCategoryHint" class="tiny muted" style="margin-top:7px"></div></div><div class="field" id="angleField"><label>角度</label><select name="angle">${FACE_ANGLES.map(x=>`<option>${x}</option>`).join('')}</select></div><div class="field-row"><div class="field"><label>状態</label><select name="status">${IMAGE_STATUS.map(x=>`<option>${x}</option>`).join('')}</select></div><div class="field" id="basisField"><label>生成基準の強さ</label><select name="basis">${BASIS.map(x=>`<option>${x}</option>`).join('')}</select></div></div><div class="field"><label>評価メモ</label><textarea name="memo" placeholder="本人固定・角度・髪・体型など"></textarea></div><button class="gold-btn" type="submit">画像を保存</button></form>`);
   const cat=document.getElementById('imageCategory');
   const angle=document.getElementById('angleField');
@@ -107,8 +148,8 @@ imageModal=async function(memberId,preferredCategory=''){
   const syncCategory=()=>{
     const isMaster=['顔8方向','体型8方向'].includes(cat.value);
     angle.style.display=isMaster?'grid':'none';
-    basis.style.display=cat.value===PROFILE_CATEGORY?'none':'grid';
-    hint.textContent=cat.value===PROFILE_CATEGORY?'プロフィール専用です。顔正面0°の枠には入りません。':isMaster?'角度マスターの登録先です。':'アルバムへ追加します。';
+    basis.style.display='grid';
+    hint.textContent=isMaster?'角度マスターの登録先です。':'アルバムへ追加します。';
   };
   cat.onchange=syncCategory;
   syncCategory();
