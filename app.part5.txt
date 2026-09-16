@@ -1,0 +1,135 @@
+
+// ---- Existing Moa World data migration / profile-progress enhancement ----
+const WORLD_SEED_VERSION='2026-09-17a';
+const WORLD_MEMBERS=[
+{name:'萌愛',kana:'もあ',age:23,job:'造園業・リーダー',affiliation:'造園会社',status:'確定',favorite:true,tags:'主役・中心人物・スポーツ',personality:'適当・出たとこ勝負に見えるが、最後はやり切る。',hobbies:'器械体操・空手・テコンドー・ブレイクダンス',memo:'身長158cm。自然な色白。喫煙。左前腕に「YOLO, be kind…」＋上下黒ハートのタトゥー。ピアス／リング3／右足首アンクレット。体型基準あり。',faceProgress:8,bodyProgress:1,posterStatus:'複数あり'},
+{name:'一華',kana:'いちか',age:24,job:'介護職',affiliation:'',status:'確定',favorite:false,tags:'姉妹・柔道',personality:'いじられムードメーカー。',hobbies:'柔道',memo:'一葉の実姉。年子姉妹。身長155cm。左胸上に「Live Your own way」のタトゥー。',posterStatus:'未確認'},
+{name:'一葉',kana:'かずは',age:23,job:'市役所・スポーツ振興',affiliation:'市役所',status:'確定',favorite:false,tags:'行政・空手・同級生',personality:'',hobbies:'空手',memo:'一華の実妹。萌愛・凛と同級生。萌愛とは同じ小学校・同じ空手道場。右目尻付近に小さなホクロ。',faceProgress:6,posterStatus:'未確認'},
+{name:'帆香',kana:'ほのか',age:30,job:'美容室オーナー',affiliation:'美容室',status:'確定',favorite:false,tags:'美容室・オーナー',personality:'頼られる立場。最後の砦。',hobbies:'',memo:'美容室オーナー。柚凪・愛莉・芽衣らの仕事側の中心人物。',posterStatus:'修正推奨'},
+{name:'柚凪',kana:'ゆずな',age:23,job:'美容師',affiliation:'帆香の美容室',status:'確定',favorite:false,tags:'美容室',personality:'仕事人間寄り。帆香に認められたい。',hobbies:'',memo:'ヘアスタイリスト。顔8方向完成。',faceProgress:8,posterStatus:'あり'},
+{name:'愛莉',kana:'あいり',age:25,job:'美容師',affiliation:'帆香の美容室',status:'確定',favorite:false,tags:'美容室・スタイリスト',personality:'',hobbies:'',memo:'専門学校卒業後から帆香の店で勤務。美容師歴約5年。スタイリスト兼後輩指導係。',posterStatus:'完成'},
+{name:'芽衣',kana:'めい',age:23,job:'キッズルーム',affiliation:'美容室併設キッズルーム',status:'確定',favorite:false,tags:'美容室・キッズルーム',personality:'',hobbies:'',memo:'美容室併設キッズルーム。資格取得を目標にしている設定。',posterStatus:'未確認'},
+{name:'彩加',kana:'あやか',age:24,job:'キッズルーム',affiliation:'',status:'確定',favorite:false,tags:'子ども・接客',personality:'',hobbies:'',memo:'体型8方向の制作進行あり。',bodyProgress:3,posterStatus:'制作中'},
+{name:'真里愛',kana:'まりあ',age:25,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル・白ギャル',personality:'荒れていた過去があり、家庭環境の影響を受けている。',hobbies:'',memo:'白ギャル系。ネイルサロン勤務。',posterStatus:'未確認'},
+{name:'絢奈',kana:'あやな',age:24,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル',personality:'',hobbies:'',memo:'真里愛と同じネイルサロン勤務。顔8方向完成。体型8方向を制作中。',faceProgress:8,bodyProgress:1,posterStatus:'完成'},
+{name:'未姫',kana:'みき',age:25,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル',personality:'',hobbies:'',memo:'顔8方向を進行中。右90°は修正対象。',faceProgress:6,bodyProgress:1,posterStatus:'未確認'},
+{name:'七彩',kana:'なな',age:22,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル',personality:'',hobbies:'',memo:'正面0°を修正中。',faceProgress:1,posterStatus:'未確認'},
+{name:'莉央',kana:'りお',age:24,job:'看護師',affiliation:'病院',status:'確定',favorite:false,tags:'医療',personality:'おしとやかなお姉さん。',hobbies:'',memo:'看護師。診療科・勤務先の細部は固定しすぎない。',posterStatus:'未確認'},
+{name:'優愛',kana:'ゆあ',age:24,job:'医療事務・外来受付',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療',personality:'',hobbies:'',memo:'莉央と同じ病院の医療事務・外来受付。顔は正面0°・左前45°まで完了。',faceProgress:2,posterStatus:'未確認'},
+{name:'美香',kana:'みか',age:25,job:'歯科衛生士',affiliation:'歯科',status:'確定',favorite:false,tags:'医療・歯科',personality:'',hobbies:'',memo:'医療系メンバー。',posterStatus:'未確認'},
+{name:'結菜',kana:'ゆいな',age:25,job:'管理栄養士',affiliation:'NST',status:'確定',favorite:false,tags:'医療・NST',personality:'ピュアで真面目。箱入り娘タイプ。',hobbies:'',memo:'管理栄養士。NST。',posterStatus:'未確認'},
+{name:'陽菜',kana:'ひな',age:25,job:'薬剤師',affiliation:'NST',status:'確定',favorite:false,tags:'医療・NST',personality:'',hobbies:'',memo:'薬剤師。NST。',posterStatus:'未確認'},
+{name:'日和',kana:'ひより',age:27,job:'看護師',affiliation:'',status:'確定',favorite:false,tags:'医療',personality:'',hobbies:'',memo:'看護師。咲愛の生活面の導線にも関わる。',posterStatus:'未確認'},
+{name:'凛',kana:'りん',age:23,job:'市役所・子育て支援',affiliation:'市役所',status:'確定',favorite:false,tags:'行政・同級生',personality:'静かに強い一言を言うタイプ。',hobbies:'',memo:'萌愛・一葉と同級生。子育て支援／相談窓口。',posterStatus:'未確認'},
+{name:'心桜',kana:'みお',age:23,job:'地域子育て支援センター',affiliation:'地域子育て支援センター',status:'確定',favorite:false,tags:'子育て支援・シングルマザー・同級生',personality:'',hobbies:'',memo:'結婚・離婚経験あり。娘と福岡から茨城へ戻った。萌愛と同級生。',posterStatus:'完成'},
+{name:'玲奈',kana:'れな',age:22,job:'大学生・カフェ勤務',affiliation:'カフェ',status:'確定',favorite:false,tags:'カフェ・大学生',personality:'おっとり・まったり。',hobbies:'',memo:'カフェ勤務。顔8方向完成。',faceProgress:8,posterStatus:'未確認'},
+{name:'杏奈',kana:'あんな',age:22,job:'パティシエ',affiliation:'Gâteau Chéri',status:'確定',favorite:false,tags:'飲食・スイーツ',personality:'',hobbies:'',memo:'勤務先「Gâteau Chéri（ガトー シェリ）」。',posterStatus:'未確認'},
+{name:'萌花',kana:'もえか',age:23,job:'居酒屋',affiliation:'',status:'確定',favorite:false,tags:'飲食',personality:'',hobbies:'神社・キティ・ONE PIECE・アニメ',memo:'居酒屋勤務。',posterStatus:'未確認'},
+{name:'有加',kana:'ゆか',age:25,job:'獣医師',affiliation:'',status:'確定',favorite:false,tags:'動物・ペット',personality:'',hobbies:'',memo:'獣医師。',posterStatus:'未確認'},
+{name:'佳奈美',kana:'かなみ',age:24,job:'ペットショップ店員',affiliation:'ホームセンター・ペット部門',status:'確定',favorite:false,tags:'動物・ペット・ホームセンター',personality:'',hobbies:'',memo:'ホームセンターのペット部門。',posterStatus:'未確認'},
+{name:'琴音',kana:'ことね',age:24,job:'トリマー',affiliation:'',status:'確定',favorite:false,tags:'動物・ペット',personality:'',hobbies:'',memo:'トリマー。',posterStatus:'未確認'},
+{name:'葉月',kana:'はづき',age:23,job:'トリマー',affiliation:'ホームセンター・トリマー室',status:'確定',favorite:false,tags:'動物・ペット・ホームセンター',personality:'',hobbies:'',memo:'ホームセンターのトリマー室。',posterStatus:'未確認'},
+{name:'真妃',kana:'まき',age:26,job:'銀行員・FP',affiliation:'銀行',status:'確定',favorite:false,tags:'金融・FP',personality:'',hobbies:'',memo:'銀行員／FP。',posterStatus:'未着手'},
+{name:'香住',kana:'かすみ',age:25,job:'住宅展示場受付',affiliation:'住宅展示場',status:'確定',favorite:false,tags:'住宅・接客',personality:'',hobbies:'',memo:'住宅展示場。顔8方向完成。',faceProgress:8,posterStatus:'未着手'},
+{name:'佐友里',kana:'さゆり',age:25,job:'不動産会社・賃貸営業／契約事務',affiliation:'一華・一葉の父が経営する不動産会社',status:'確定',favorite:false,tags:'不動産・住宅',personality:'',hobbies:'',memo:'心桜の部屋の内見担当。',posterStatus:'あり'},
+{name:'明日香',kana:'あすか',age:29,job:'ガールズバーオーナー',affiliation:'ガールズバー',status:'確定',favorite:false,tags:'ガールズバー・オーナー',personality:'落ち着いていて面倒見が良い。頼れるお姉さん。',hobbies:'',memo:'18〜23歳まで都内キャバクラでNo.1。教育係を経験後、自らガールズバーを立ち上げた。現在はオーナー。人物ビジュアルは完全新規ランダムで候補選定中。',posterStatus:'未確認'},
+{name:'美桜',kana:'みお',age:25,job:'ガールズバー勤務',affiliation:'明日香のガールズバー',status:'確定',favorite:false,tags:'ガールズバー',personality:'',hobbies:'',memo:'ガールズバー勤務。',posterStatus:'未確認'},
+{name:'美玲',kana:'みれい',age:25,job:'ガールズバー勤務',affiliation:'明日香のガールズバー',status:'確定',favorite:false,tags:'ガールズバー',personality:'',hobbies:'',memo:'慰謝料をきっかけに、将来はコスメ方面も視野に入れる設定。',posterStatus:'未確認'},
+{name:'咲愛',kana:'さら',age:23,job:'ガールズバー勤務',affiliation:'明日香のガールズバー',status:'確定',favorite:false,tags:'ガールズバー・新人',personality:'ヤンチャ寄りの新人。',hobbies:'',memo:'新人。日和宅へつながる生活導線あり。',posterStatus:'未確認'},
+{name:'可憐',kana:'かれん',age:22,job:'読者モデル',affiliation:'',status:'確定',favorite:false,tags:'モデル',personality:'一人っ子で、家でも外でもお姫様タイプ。',hobbies:'',memo:'読者モデル。',posterStatus:'未確認'},
+{name:'流歌',kana:'るか',age:22,job:'保育士',affiliation:'',status:'確定',favorite:false,tags:'保育',personality:'ちょい悪に見えるが真面目。',hobbies:'',memo:'保育士。',posterStatus:'未確認'},
+{name:'美咲',kana:'みさき',age:24,job:'保育士',affiliation:'',status:'確定',favorite:false,tags:'保育',personality:'',hobbies:'',memo:'保育士。',posterStatus:'未確認'},
+{name:'瑞希',kana:'みずき',age:23,job:'雑貨店員',affiliation:'雑貨・観葉植物販売',status:'確定',favorite:false,tags:'雑貨・接客',personality:'',hobbies:'',memo:'雑貨店／観葉植物販売。',posterStatus:'未確認'},
+{name:'愛美',kana:'まなみ',age:25,job:'自動車ディーラー受付',affiliation:'自動車ディーラー',status:'確定',favorite:false,tags:'車・受付',personality:'',hobbies:'',memo:'自動車ディーラー受付。',posterStatus:'未確認'},
+{name:'希彩',kana:'のあ',age:24,job:'特別支援・養護学校系教員',affiliation:'',status:'確定',favorite:false,tags:'教育',personality:'',hobbies:'',memo:'特別支援／養護学校系の教員。',posterStatus:'未確認'},
+{name:'玲子',kana:'れいこ',age:28,job:'コスメ販売',affiliation:'',status:'確定',favorite:false,tags:'コスメ・販売・接客',personality:'',hobbies:'',memo:'コスメ販売の店頭接客。',faceProgress:1,posterStatus:'未確認'},
+{name:'心杏',kana:'ここあ',age:20,job:'大学生・デザイン学部',affiliation:'大学',status:'確定',favorite:false,tags:'大学生・デザイン',personality:'',hobbies:'',memo:'デザイン学部。',posterStatus:'未確認'},
+{name:'留愛',kana:'るあ',age:20,job:'大学生・社会学',affiliation:'大学',status:'確定',favorite:false,tags:'大学生・社会学',personality:'',hobbies:'',memo:'社会学。',posterStatus:'未確認'},
+{name:'陽子',kana:'ようこ',age:28,job:'カメラマン',affiliation:'',status:'確定',favorite:false,tags:'カメラ・地域',personality:'',hobbies:'',memo:'街並みや店舗で働く人を撮影し、地域発信に関わる。',posterStatus:'未確認'},
+{name:'琉唯',kana:'るい',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'ギャル・職業未整理',personality:'美人・綺麗寄り。少しキツそうに見えるが芯が強く、本質は真面目。',hobbies:'',memo:'人物作成済み。職業は未整理。ギャル女性の中でも好み上位。',posterStatus:'未確認'},
+{name:'優希',kana:'ゆうき',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'職業未整理',personality:'',hobbies:'',memo:'人物作成済み。顔角度8方向が2セット完了。',faceProgress:8,posterStatus:'未確認'},
+{name:'望愛',kana:'のあ',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'職業未整理',personality:'',hobbies:'',memo:'人物作成済み。正面0°あり。体型設定 159cm/49kg、B89-W61-H88、E70。',faceProgress:1,bodyProgress:1,posterStatus:'未確認'},
+{name:'莉亜那',kana:'りあな',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'職業未整理・体型測定',personality:'',hobbies:'',memo:'体型測定進行。指示E70、見た目E70〜小F70。F70正式は未確定。二の腕・太腿は細め補正。',bodyProgress:1,posterStatus:'未確認'},
+{name:'美梨彩',kana:'みりさ',age:null,job:'ビューティーアドバイザー',affiliation:'',status:'候補',favorite:false,tags:'美容・BA',personality:'',hobbies:'',memo:'BA（ビューティーアドバイザー）。年齢は未確定。',posterStatus:'未確認'},
+{name:'茜',kana:'あかね',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'大食い',personality:'',hobbies:'大食い',memo:'大食いキャラ。職業・年齢は未確定。',posterStatus:'未確認'},
+{name:'成美',kana:'なるみ',age:23,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・フェイシャル・肌管理',personality:'',hobbies:'',memo:'フェイシャル／肌管理担当。',posterStatus:'未確認'},
+{name:'絹世',kana:'きぬよ',age:25,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・痩身・ボディメイク',personality:'',hobbies:'',memo:'痩身／ボディメイク担当。',posterStatus:'未確認'},
+{name:'有子',kana:'ゆうこ',age:24,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・脱毛・美容ケア',personality:'',hobbies:'',memo:'脱毛／美容ケア担当。',posterStatus:'未確認'}
+];
+const WORLD_RELATIONS=[
+{k:'ichika-kazuha',a:'一華',b:'一葉',tags:['家族','姉妹'],aToB:'姉',bToA:'妹',memo:'年子の実姉妹。'},
+{k:'moa-kazuha',a:'萌愛',b:'一葉',tags:['同級生','小学校','空手道場'],aToB:'',bToA:'',memo:'同じ小学校・同じ空手道場。'},
+{k:'moa-rin',a:'萌愛',b:'凛',tags:['同級生'],aToB:'',bToA:'',memo:'同級生。'},
+{k:'moa-kokoro',a:'萌愛',b:'心桜',tags:['同級生'],aToB:'',bToA:'',memo:'同級生。'},
+{k:'moa-noa',a:'萌愛',b:'希彩',tags:['友人'],aToB:'親友',bToA:'友達',memo:'方向ごとの感じ方を別管理する関係例としても使用。'},
+{k:'honoka-yuzuna',a:'帆香',b:'柚凪',tags:['仕事','美容室'],aToB:'オーナー',bToA:'スタイリスト',memo:'同じ美容室。'},
+{k:'honoka-airi',a:'帆香',b:'愛莉',tags:['仕事','美容室'],aToB:'オーナー',bToA:'スタイリスト',memo:'同じ美容室。'},
+{k:'honoka-mei',a:'帆香',b:'芽衣',tags:['仕事','美容室'],aToB:'オーナー',bToA:'キッズルーム',memo:'美容室併設キッズルーム。'},
+{k:'maria-ayanna',a:'真里愛',b:'絢奈',tags:['仕事','ネイル'],aToB:'同僚',bToA:'同僚',memo:'ネイルサロン勤務。'},
+{k:'rio-yua',a:'莉央',b:'優愛',tags:['仕事','病院'],aToB:'看護師',bToA:'医療事務',memo:'同じ病院。'},
+{k:'yuina-hina',a:'結菜',b:'陽菜',tags:['仕事','NST'],aToB:'管理栄養士',bToA:'薬剤師',memo:'NST。'},
+{k:'asuka-mio',a:'明日香',b:'美桜',tags:['仕事','ガールズバー'],aToB:'オーナー',bToA:'スタッフ',memo:'同じガールズバー。'},
+{k:'asuka-mirei',a:'明日香',b:'美玲',tags:['仕事','ガールズバー'],aToB:'オーナー',bToA:'スタッフ',memo:'同じガールズバー。'},
+{k:'asuka-sara',a:'明日香',b:'咲愛',tags:['仕事','ガールズバー'],aToB:'オーナー',bToA:'新人',memo:'同じガールズバー。'},
+{k:'asuka-honoka',a:'明日香',b:'帆香',tags:['仕事連携'],aToB:'連携相手',bToA:'連携相手',memo:'店舗・女性支援側で連携。'},
+{k:'kanami-hazuki',a:'佳奈美',b:'葉月',tags:['仕事','ホームセンター','ペット'],aToB:'ペット部門',bToA:'トリマー室',memo:'同じホームセンター系の導線。'},
+{k:'sayuri-kokoro',a:'佐友里',b:'心桜',tags:['不動産','住居'],aToB:'内見担当',bToA:'利用者',memo:'心桜の部屋の内見担当。'}
+];
+const WORLD_PRODUCTION=[
+{name:'絢奈',nextCategory:'体型8方向',nextAngle:'左前45°',recheckMemo:'顔8方向は完成。体型の正面0°を基準に次角度へ。',cautions:'頭だけでなく全身を一体で回転。体型・足元の連続性を優先。'},
+{name:'未姫',nextCategory:'顔8方向',nextAngle:'右90°',recheckMemo:'右90°は修正対象。採用済み角度を本人固定の補助基準にする。',cautions:'顔立ち・耳位置・髪の流れの連続性を優先。'},
+{name:'七彩',nextCategory:'顔8方向',nextAngle:'正面0°',recheckMemo:'正面0°を修正して基準を安定させる。',cautions:'正面基準を先に確定してから次角度へ。'},
+{name:'優愛',nextCategory:'顔8方向',nextAngle:'左90°',recheckMemo:'正面0°と左前45°は完了。',cautions:'正面・左前45°の本人固定を維持。'},
+{name:'帆香',nextCategory:'ポスター',nextAngle:'',recheckMemo:'既存ポスターは修正推奨。',cautions:'美容室オーナーとしての人物像を崩さない。'},
+{name:'真妃',nextCategory:'ポスター',nextAngle:'',recheckMemo:'ポスター未着手。',cautions:'銀行員／FPの職業感を優先。'},
+{name:'香住',nextCategory:'ポスター',nextAngle:'',recheckMemo:'顔8方向完成。ポスター未着手。',cautions:'住宅展示場受付としての清潔感を優先。'}
+];
+
+const _baseMemberTabHtml=memberTabHtml;
+memberTabHtml=function(m,images,relations,schedules,prod){
+  if(state.memberTab==='profile'){
+    const fp=Number.isFinite(m.faceProgress)?`${m.faceProgress}/8`:'未確認';
+    const bp=Number.isFinite(m.bodyProgress)?`${m.bodyProgress}/8`:'未確認';
+    return `<div class="card"><div class="setting-row"><span>ステータス</span><b>${esc(m.status||'候補')}</b></div><div class="setting-row"><span>職業</span><span class="muted">${esc(m.job||'未設定')}</span></div><div class="setting-row"><span>所属</span><span class="muted">${esc(m.affiliation||'未設定')}</span></div><div class="setting-row"><span>タグ</span><span class="muted">${esc(m.tags||'未設定')}</span></div><div class="setting-row"><span>性格</span><span class="muted">${esc(m.personality||'未設定')}</span></div><div class="setting-row"><span>趣味</span><span class="muted">${esc(m.hobbies||'未設定')}</span></div><div class="setting-row"><span>メモ</span><span class="muted">${esc(m.memo||'未設定')}</span></div></div><div class="card"><b>移行済み制作記録</b><div class="setting-row"><span>顔8方向</span><span>${fp}</span></div><div class="setting-row"><span>体型8方向</span><span>${bp}</span></div><div class="setting-row"><span>ポスター</span><span>${esc(m.posterStatus||'未確認')}</span></div><div class="tiny muted">※ここは過去の進行記録。画像本体は端末に登録した分だけギャラリーに表示されます。</div></div>`;
+  }
+  if(state.memberTab==='gallery'){
+    const faceActual=images.filter(i=>i.category==='顔8方向').length,bodyActual=images.filter(i=>i.category==='体型8方向').length;
+    const face=FACE_ANGLES.map(a=>slotHtml(a,images.find(i=>i.category==='顔8方向'&&i.angle===a))).join('');
+    const body=BODY_ANGLES.map(a=>slotHtml(a,images.find(i=>i.category==='体型8方向'&&i.angle===a))).join('');
+    const albums=ALBUMS.map(a=>{const xs=images.filter(i=>i.category===a);return `<div class="album"><b>${a}</b><span class="count">${xs.length}</span><small class="muted"> 枚</small></div>`}).join('');
+    const fr=Number.isFinite(m.faceProgress)?m.faceProgress:'－',br=Number.isFinite(m.bodyProgress)?m.bodyProgress:'－';
+    return `<div class="section-title"><h2>顔8方向</h2><small>画像登録 ${faceActual}/8 ・進行記録 ${fr}/8</small></div><div class="angle-grid">${face}</div><div class="section-title"><h2>体型8方向</h2><small>画像登録 ${bodyActual}/8 ・進行記録 ${br}/8</small></div><div class="angle-grid">${body}</div><div class="section-title"><h2>アルバム</h2></div><div class="album-grid">${albums}</div>`;
+  }
+  if(state.memberTab==='relations') return relations.length?relations.map(r=>`<div class="card"><b>${esc(r.personA===m.id?r.personBName:r.personAName)}</b><div class="badges">${(r.tags||[]).map(t=>`<span class="badge">${esc(t)}</span>`).join('')}</div><div class="tiny muted" style="margin-top:8px">${[r.aToB,r.bToA].filter(Boolean).map(esc).join(' / ')}${r.closeness?` ・ 親密度 ${r.closeness}/5`:''}</div>${r.memo?`<div class="tiny muted" style="margin-top:6px">${esc(r.memo)}</div>`:''}</div>`).join(''):`<div class="empty">関係データはまだありません</div>`;
+  if(state.memberTab==='production'){
+    const fa=images.filter(i=>i.category==='顔8方向'&&i.status?.startsWith('採用')).length,ba=images.filter(i=>i.category==='体型8方向'&&i.status?.startsWith('採用')).length;
+    const f=Math.max(fa,Number(m.faceProgress)||0),b=Math.max(ba,Number(m.bodyProgress)||0);
+    return `<div class="card"><b>顔8方向 ${f}/8 <small class="muted">（画像本体 ${fa}/8）</small></b><div class="progress"><i style="width:${f/8*100}%"></i></div><div style="height:12px"></div><b>体型8方向 ${b}/8 <small class="muted">（画像本体 ${ba}/8）</small></b><div class="progress"><i style="width:${b/8*100}%"></i></div><div class="setting-row"><span>ポスター</span><span>${esc(m.posterStatus||'未確認')}</span></div></div><div class="card"><b>次に生成する前の確認</b><div class="setting-row"><span>次カテゴリ</span><span>${esc(prod?.nextCategory||'未設定')}</span></div><div class="setting-row"><span>次角度</span><span>${esc(prod?.nextAngle||'未設定')}</span></div><div class="setting-row"><span>再評価メモ</span><span class="muted">${esc(prod?.recheckMemo||'未設定')}</span></div>${prod?.cautions?`<div class="setting-row"><span>注意</span><span class="muted">${esc(prod.cautions)}</span></div>`:''}<button class="gold-btn" data-action="production-edit">次の制作を設定</button></div>`;
+  }
+  return _baseMemberTabHtml(m,images,relations,schedules,prod);
+};
+
+renderProduction=async function(){
+  const members=await activeMembers();const images=await activeImages();const prod=await getAll('production');
+  app.innerHTML=`<div class="section-title"><h2>人物別の制作進行</h2><small>過去記録＋画像DB</small></div>${members.map(m=>{const xs=images.filter(i=>i.memberId===m.id);const fa=xs.filter(i=>i.category==='顔8方向'&&i.status?.startsWith('採用')).length;const ba=xs.filter(i=>i.category==='体型8方向'&&i.status?.startsWith('採用')).length;const f=Math.max(fa,Number(m.faceProgress)||0),b=Math.max(ba,Number(m.bodyProgress)||0);const p=prod.find(x=>x.memberId===m.id);return `<div class="card" data-prod-member="${m.id}"><div class="row between"><b>${esc(m.name)}</b><span class="gold">›</span></div><div class="tiny muted">顔 ${f}/8（画像${fa}）・体型 ${b}/8（画像${ba}）・次：${esc(p?.nextAngle||p?.nextCategory||'未設定')}</div><div class="progress"><i style="width:${((f+b)/16)*100}%"></i></div></div>`}).join('')}`;
+  document.querySelectorAll('[data-prod-member]').forEach(c=>c.onclick=()=>{state.memberId=c.dataset.prodMember;state.memberTab='production';render()});
+};
+
+seed=async function(){
+  const current=await getAll('members');
+  if(localStorage.getItem('moaWorldSeedVersion')===WORLD_SEED_VERSION){if(!current.length){/* fall through */}else return;}
+  const byName=new Map(current.map(m=>[m.name,m]));
+  for(const src of WORLD_MEMBERS){
+    const old=byName.get(src.name);
+    const obj=old?{...old,...src,id:old.id,createdAt:old.createdAt||now(),updatedAt:now(),deletedAt:old.deletedAt||null}:{...src,id:uid('mem'),createdAt:now(),updatedAt:now(),deletedAt:null};
+    await put('members',obj);byName.set(src.name,obj);
+  }
+  for(const rel of WORLD_RELATIONS){
+    const a=byName.get(rel.a),b=byName.get(rel.b);if(!a||!b)continue;
+    await put('relations',{id:`seedrel_${rel.k}`,seedKey:rel.k,personA:a.id,personB:b.id,personAName:a.name,personBName:b.name,tags:rel.tags||[],aToB:rel.aToB||'',bToA:rel.bToA||'',closeness:null,memo:rel.memo||'',createdAt:now(),updatedAt:now()});
+  }
+  const currentProd=await getAll('production');
+  for(const p of WORLD_PRODUCTION){const m=byName.get(p.name);if(!m)continue;const old=currentProd.find(x=>x.memberId===m.id);await put('production',{...(old||{}),id:old?.id||`prod_${m.id}`,memberId:m.id,nextCategory:p.nextCategory||'',nextAngle:p.nextAngle||'',primaryImageId:old?.primaryImageId||'',supplementalImageIds:old?.supplementalImageIds||[],recheckMemo:p.recheckMemo||'',cautions:p.cautions||'',updatedAt:now()});}
+  localStorage.setItem('moaWorldSeedVersion',WORLD_SEED_VERSION);
+  await log('既存データ移行','app','world-seed',`${WORLD_MEMBERS.length}名・関係${WORLD_RELATIONS.length}件を反映`);
+};
