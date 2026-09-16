@@ -1,0 +1,24 @@
+
+// ---- Android/PWA back-button history support ----
+const NAV_STATE_KEY='moaNavState';
+function navSnapshot(){return {moaNav:true,view:state.view,memberId:state.memberId,memberTab:state.memberTab,search:state.search,job:state.job,month:state.month instanceof Date?state.month.toISOString():state.month,selectedDate:state.selectedDate};}
+function applyNavSnapshot(s){if(!s||!s.moaNav)return;state.view=s.view||'home';state.memberId=s.memberId||null;state.memberTab=s.memberTab||'profile';state.search=s.search||'';state.job=s.job||'すべて';state.month=s.month?new Date(s.month):new Date();state.selectedDate=s.selectedDate||toDateKey(new Date());document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));}
+function sameNav(a,b){return !!(a&&b&&a.moaNav&&b.moaNav&&a.view===b.view&&a.memberId===b.memberId&&a.memberTab===b.memberTab&&a.search===b.search&&a.job===b.job&&a.selectedDate===b.selectedDate);}
+function pushCurrentNav(){const snap=navSnapshot();if(!sameNav(history.state,snap))history.pushState(snap,'',location.href);}
+
+const _historyRenderMemberDetail=renderMemberDetail;
+renderMemberDetail=async function(id){await _historyRenderMemberDetail(id);const back=document.getElementById('backMembers');if(back)back.onclick=()=>{if(history.length>1)history.back();else{state.memberId=null;state.view='members';render();}};};
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest?.('[data-view],[data-member],[data-mtab],[data-prod-member]');
+  if(!t)return;
+  setTimeout(()=>pushCurrentNav(),0);
+});
+
+window.addEventListener('popstate',e=>{
+  if(document.querySelector('.modal-backdrop'))closeModal();
+  if(e.state?.moaNav){applyNavSnapshot(e.state);render();}
+});
+
+// Replace the current launcher entry with the current in-app screen.
+setTimeout(()=>{if(!history.state?.moaNav)history.replaceState(navSnapshot(),'',location.href);},0);
