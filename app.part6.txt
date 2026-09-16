@@ -169,3 +169,57 @@ imageModal=async function(memberId,preferredCategory=''){
     render();
   };
 };
+
+
+// ---- Direct angle-slot image add / replace ----
+async function angleSlotModal(memberId,category,angle,imageId=''){
+  const m=await getOne('members',memberId);
+  if(!m){toast('人物が見つかりません');return;}
+  const images=(await activeImages()).filter(i=>i.memberId===memberId);
+  let current=imageId?await getOne('images',imageId):null;
+  if(current?.deletedAt)current=null;
+  if(!current)current=images.find(i=>i.category===category&&i.angle===angle)||null;
+  const status=current?.status||'採用・安定';
+  const basis=current?.basis||'強い';
+  showModal(`${category}・${angle}`,`<form id="angleSlotForm" class="form">
+    <div class="angle-target"><b>${esc(m.name)}</b><span>${esc(category)} ／ ${esc(angle)}</span></div>
+    ${current?.dataUrl?`<img class="angle-modal-preview" src="${esc(current.dataUrl)}" alt="${esc(m.name)} ${esc(angle)}の現在画像">`:''}
+    <div class="field"><label>${current?'差し替える画像':'追加する画像'} *</label><input name="file" type="file" accept="image/*" required></div>
+    <div class="field-row">
+      <div class="field"><label>状態</label><select name="status">${IMAGE_STATUS.map(x=>`<option ${x===status?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="field"><label>生成基準の強さ</label><select name="basis">${BASIS.map(x=>`<option ${x===basis?'selected':''}>${x}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>評価メモ</label><textarea name="memo" placeholder="本人固定・角度・髪・体型など">${esc(current?.memo||'')}</textarea></div>
+    <button class="gold-btn" type="submit">${current?'この角度の画像を差し替える':'この角度へ画像を追加'}</button>
+  </form>`);
+  document.getElementById('angleSlotForm').onsubmit=async e=>{
+    e.preventDefault();
+    if(current&&!confirm(`${angle}の現在画像を、新しく選んだ画像へ差し替えますか？`))return;
+    const f=new FormData(e.currentTarget);
+    const dataUrl=await fileToDataURL(f.get('file'));
+    if(current){
+      current.dataUrl=dataUrl;
+      current.status=f.get('status');
+      current.basis=f.get('basis');
+      current.memo=f.get('memo');
+      current.updatedAt=now();
+      await put('images',current);
+      await log('角度画像差し替え','image',current.id,`${category} ${angle}`);
+    }else{
+      const obj={id:uid('img'),memberId,category,angle,status:f.get('status'),basis:f.get('basis'),memo:f.get('memo'),dataUrl,createdAt:now(),updatedAt:now(),deletedAt:null};
+      await put('images',obj);
+      await log('角度画像追加','image',obj.id,`${category} ${angle}`);
+    }
+    closeModal();
+    toast(`${angle}の画像を保存しました`);
+    renderMemberDetail(memberId);
+  };
+}
+
+const _angleRenderMemberDetail=renderMemberDetail;
+renderMemberDetail=async function angleRenderMemberDetail(id){
+  await _angleRenderMemberDetail(id);
+  document.querySelectorAll('[data-angle-category][data-angle]').forEach(slot=>{
+    slot.onclick=()=>angleSlotModal(id,slot.dataset.angleCategory,slot.dataset.angle,slot.dataset.imageId||'');
+  });
+};
