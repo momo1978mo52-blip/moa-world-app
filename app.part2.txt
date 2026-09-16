@@ -1,0 +1,48 @@
+  const images=(await activeImages()).filter(i=>i.memberId===id);const relations=(await getAll('relations')).filter(r=>r.personA===id||r.personB===id);const schedules=(await getAll('schedules')).filter(s=>s.memberId===id);const prod=(await getAll('production')).find(p=>p.memberId===id);
+  titleEl.textContent=m.name;
+  app.innerHTML=`
+    <button class="ghost-btn" id="backMembers">← メンバー一覧</button>
+    <div class="card" style="margin-top:12px"><div class="detail-head"><div class="avatar large avatar-placeholder">${esc(initials(m.name))}</div><div><h2>${esc(m.name)} ${m.favorite?'★':''}</h2><div class="muted">${esc(m.kana||'')} ${m.age?`・${m.age}歳`:''}</div><div class="gold tiny">${esc(m.job||'職業未設定')} ${m.affiliation?`・${esc(m.affiliation)}`:''}</div></div></div>
+    <div class="actions"><button class="gold-btn" data-action="image-add">画像追加</button><button class="ghost-btn" data-action="schedule-add">予定追加</button><button class="ghost-btn" data-action="relation-add">関係追加</button><button class="ghost-btn" data-action="member-edit">編集</button></div></div>
+    <div class="tabbar">${['profile','gallery','relations','schedule','production'].map(t=>`<button class="tab-btn ${state.memberTab===t?'active':''}" data-mtab="${t}">${({profile:'プロフィール',gallery:'ギャラリー',relations:'関係',schedule:'予定',production:'制作'})[t]}</button>`).join('')}</div>
+    <div id="memberTabBody">${memberTabHtml(m,images,relations,schedules,prod)}</div>
+  `;
+  document.getElementById('backMembers').onclick=()=>{state.memberId=null;state.view='members';document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='members'));render()};
+  document.querySelectorAll('[data-mtab]').forEach(b=>b.onclick=()=>{state.memberTab=b.dataset.mtab;renderMemberDetail(id)});
+  bindCommon();
+}
+function memberTabHtml(m,images,relations,schedules,prod){
+  if(state.memberTab==='profile') return `<div class="card"><div class="setting-row"><span>ステータス</span><b>${esc(m.status||'候補')}</b></div><div class="setting-row"><span>性格</span><span class="muted">${esc(m.personality||'未設定')}</span></div><div class="setting-row"><span>趣味</span><span class="muted">${esc(m.hobbies||'未設定')}</span></div><div class="setting-row"><span>メモ</span><span class="muted">${esc(m.memo||'未設定')}</span></div></div>`;
+  if(state.memberTab==='gallery'){
+    const face=FACE_ANGLES.map(a=>slotHtml(a,images.find(i=>i.category==='顔8方向'&&i.angle===a))).join('');
+    const body=BODY_ANGLES.map(a=>slotHtml(a,images.find(i=>i.category==='体型8方向'&&i.angle===a))).join('');
+    const albums=ALBUMS.map(a=>{const xs=images.filter(i=>i.category===a);return `<div class="album"><b>${a}</b><span class="count">${xs.length}</span><small class="muted"> 枚</small></div>`}).join('');
+    return `<div class="section-title"><h2>顔8方向</h2><small>${images.filter(i=>i.category==='顔8方向').length}/8</small></div><div class="angle-grid">${face}</div><div class="section-title"><h2>体型8方向</h2><small>${images.filter(i=>i.category==='体型8方向').length}/8</small></div><div class="angle-grid">${body}</div><div class="section-title"><h2>アルバム</h2></div><div class="album-grid">${albums}</div>`;
+  }
+  if(state.memberTab==='relations') return relations.length?relations.map(r=>`<div class="card"><b>${esc(r.personA===m.id?r.personBName:r.personAName)}</b><div class="badges">${(r.tags||[]).map(t=>`<span class="badge">${esc(t)}</span>`).join('')}</div><div class="tiny muted" style="margin-top:8px">${esc(r.aToB||'')} / ${esc(r.bToA||'')} ・ 親密度 ${r.closeness||3}/5</div></div>`).join(''):`<div class="empty">関係データはまだありません</div>`;
+  if(state.memberTab==='schedule') return schedules.length?schedules.sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start)).map(s=>`<div class="card"><b>${esc(s.date)} ${esc(s.start)}–${esc(s.end)}</b><div class="muted tiny">${esc(s.content||'予定')} ${s.place?`・${esc(s.place)}`:''}</div></div>`).join(''):`<div class="empty">予定はまだありません</div>`;
+  if(state.memberTab==='production'){
+    const f=images.filter(i=>i.category==='顔8方向'&&i.status?.startsWith('採用')).length;const b=images.filter(i=>i.category==='体型8方向'&&i.status?.startsWith('採用')).length;
+    return `<div class="card"><b>顔8方向 ${f}/8</b><div class="progress"><i style="width:${f/8*100}%"></i></div><div style="height:12px"></div><b>体型8方向 ${b}/8</b><div class="progress"><i style="width:${b/8*100}%"></i></div></div><div class="card"><b>次に生成する前の確認</b><div class="setting-row"><span>次カテゴリ</span><span>${esc(prod?.nextCategory||'未設定')}</span></div><div class="setting-row"><span>次角度</span><span>${esc(prod?.nextAngle||'未設定')}</span></div><div class="setting-row"><span>再評価メモ</span><span class="muted">${esc(prod?.recheckMemo||'未設定')}</span></div><button class="gold-btn" data-action="production-edit">次の制作を設定</button></div>`;
+  }
+  return '';
+}
+function slotHtml(angle,img){if(!img)return `<div class="angle-slot"><b>${esc(angle)}</b><div class="muted tiny" style="margin-top:8px">未着手</div></div>`;return `<div class="angle-slot">${img.dataUrl?`<img src="${img.dataUrl}" alt="${esc(angle)}">`:''}<b>${esc(angle)}</b><div class="badges"><span class="badge ${img.status==='採用・安定'?'ok':img.status==='採用・注意'?'warn':''}">${esc(img.status||'候補')}</span></div><div class="muted tiny">基準：${esc(img.basis||'未設定')}</div></div>`}
+
+async function renderSchedule(){
+  const members=await activeMembers();const all=await getAll('schedules');const d=state.month;const y=d.getFullYear(),mo=d.getMonth();const first=new Date(y,mo,1);const start=new Date(y,mo,1-first.getDay());const today=toDateKey(new Date());
+  let days='';for(let i=0;i<42;i++){const x=new Date(start);x.setDate(start.getDate()+i);const key=toDateKey(x);const count=all.filter(e=>e.date===key&&e.state!=='cancelled').length;days+=`<button class="day ${x.getMonth()!==mo?'dim':''} ${key===today?'today':''} ${key===state.selectedDate?'selected':''}" data-date="${key}"><b>${x.getDate()}</b><div>${count?`<span class="dot"></span><small>${count}</small>`:''}</div></button>`}
+  const selected=all.filter(e=>e.date===state.selectedDate).sort((a,b)=>a.start.localeCompare(b.start));
+  app.innerHTML=`<div class="calendar-head"><button class="ghost-btn" id="prevMonth">‹</button><b>${y}年 ${mo+1}月</b><button class="ghost-btn" id="nextMonth">›</button></div><div class="calendar-grid">${['日','月','火','水','木','金','土'].map(x=>`<div class="dow">${x}</div>`).join('')}${days}</div><div class="section-title"><h2>${state.selectedDate}</h2><button class="gold-btn tiny" data-action="schedule-add">＋予定</button></div><div class="timeline">${selected.length?selected.map(e=>`<div class="event ${e.state||''}"><b>${esc(e.start)}–${esc(e.end)} ${esc(members.find(m=>m.id===e.memberId)?.name||'未指定')}</b><div class="tiny muted">${esc(e.content||'予定')} ${e.place?`・${esc(e.place)}`:''}</div></div>`).join(''):`<div class="empty">この日の予定はありません</div>`}</div>`;
+  document.getElementById('prevMonth').onclick=()=>{state.month=new Date(y,mo-1,1);renderSchedule()};document.getElementById('nextMonth').onclick=()=>{state.month=new Date(y,mo+1,1);renderSchedule()};document.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{state.selectedDate=b.dataset.date;renderSchedule()});bindCommon();
+}
+
+async function renderProduction(){
+  const members=await activeMembers();const images=await activeImages();const prod=await getAll('production');
+  app.innerHTML=`<div class="section-title"><h2>人物別の制作進行</h2><small>画像DBから自動計算</small></div>${members.map(m=>{const xs=images.filter(i=>i.memberId===m.id);const f=xs.filter(i=>i.category==='顔8方向'&&i.status?.startsWith('採用')).length;const b=xs.filter(i=>i.category==='体型8方向'&&i.status?.startsWith('採用')).length;const p=prod.find(x=>x.memberId===m.id);return `<div class="card" data-prod-member="${m.id}"><div class="row between"><b>${esc(m.name)}</b><span class="gold">›</span></div><div class="tiny muted">顔 ${f}/8 ・ 体型 ${b}/8 ・ 次：${esc(p?.nextAngle||'未設定')}</div><div class="progress"><i style="width:${((f+b)/16)*100}%"></i></div></div>`}).join('')}`;
+  document.querySelectorAll('[data-prod-member]').forEach(c=>c.onclick=()=>{state.memberId=c.dataset.prodMember;state.memberTab='production';render()});
+}
+
+async function renderSettings(){
+  const trash=(await getAll('members')).filter(m=>m.deletedAt);const history=(await getAll('history')).sort((a,b)=>b.changedAt.localeCompare(a.changedAt)).slice(0,8);
+  app.innerHTML=`
