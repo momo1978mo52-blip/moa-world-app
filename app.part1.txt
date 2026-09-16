@@ -1,0 +1,108 @@
+'use strict';
+
+const DB_NAME='moa-world-v9';
+const DB_VERSION=1;
+const STORES=['members','images','relations','schedules','history','production'];
+const FACE_ANGLES=['正面0°','左前45°','左90°','左後ろ45°','真後ろ180°','右後ろ45°','右90°','右前45°'];
+const BODY_ANGLES=[...FACE_ANGLES];
+const ALBUMS=['仕事','私服','おうち','ポスター'];
+const IMAGE_STATUS=['採用・安定','採用・注意','修正推奨','候補','見送り','未着手'];
+const BASIS=['強い','補助','角度のみ','弱い','使用しない'];
+
+let db;
+let state={view:'home',memberId:null,memberTab:'profile',search:'',job:'すべて',month:new Date(),selectedDate:toDateKey(new Date())};
+const app=document.getElementById('app');
+const titleEl=document.getElementById('screenTitle');
+const modalRoot=document.getElementById('modalRoot');
+const importFile=document.getElementById('importFile');
+
+function uid(prefix='id'){return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`}
+function now(){return new Date().toISOString()}
+function toDateKey(d){const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`}
+function esc(v=''){return String(v).replace(/[&<>'"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]))}
+function fmtDateTime(s){if(!s)return '';const d=new Date(s);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`}
+function initials(name='?'){return name.slice(0,1)}
+
+function openDB(){return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME,DB_VERSION);
+  req.onupgradeneeded=()=>{const d=req.result;STORES.forEach(s=>{if(!d.objectStoreNames.contains(s)) d.createObjectStore(s,{keyPath:'id'});});};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+});}
+function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name)}
+function getAll(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})}
+function getOne(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})}
+function put(name,obj){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(obj);r.onsuccess=()=>res(obj);r.onerror=()=>rej(r.error);})}
+function hardDelete(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);})}
+async function log(action,targetType,targetId,detail=''){await put('history',{id:uid('hist'),action,targetType,targetId,detail,changedAt:now()});}
+
+async function seed(){
+  const members=await getAll('members');
+  if(members.length) return;
+  const sample=[
+    ['萌愛','もあ',25,'美容・スポーツ','中心人物'],['一華','いちか',24,'介護','姉'],['一葉','かずは',23,'市役所','妹'],['帆香','ほのか',30,'美容室オーナー','美容'],['莉央','りお',24,'看護師','医療']
+  ];
+  for(const [name,kana,age,job,tags] of sample){await put('members',{id:uid('mem'),name,kana,age,job,affiliation:'',status:'確定',favorite:name==='萌愛',tags,personality:'',hobbies:'',memo:'',createdAt:now(),updatedAt:now(),deletedAt:null});}
+}
+
+function setView(view){state.view=view;state.memberId=null;document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));render();}
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+document.getElementById('quickAdd').addEventListener('click',()=>openAddForCurrentView());
+
+async function render(){
+  try{
+    if(state.memberId) return renderMemberDetail(state.memberId);
+    const titles={home:'ホーム',members:'メンバー',schedule:'スケジュール',production:'制作管理',settings:'設定'};
+    titleEl.textContent=titles[state.view]||'MOA WORLD';
+    if(state.view==='home') return renderHome();
+    if(state.view==='members') return renderMembers();
+    if(state.view==='schedule') return renderSchedule();
+    if(state.view==='production') return renderProduction();
+    if(state.view==='settings') return renderSettings();
+  }catch(e){console.error(e);app.innerHTML=`<div class="empty">読み込みでエラーが発生しました。<br><small>${esc(e.message)}</small></div>`}
+}
+
+async function activeMembers(){return (await getAll('members')).filter(m=>!m.deletedAt)}
+async function activeImages(){return (await getAll('images')).filter(i=>!i.deletedAt)}
+
+async function renderHome(){
+  const members=await activeMembers();const images=await activeImages();const schedules=await getAll('schedules');const prod=await getAll('production');
+  const today=toDateKey(new Date());const todayEvents=schedules.filter(s=>s.date===today && s.state!=='cancelled').sort((a,b)=>a.start.localeCompare(b.start));
+  const adopted=images.filter(i=>i.status?.startsWith('採用')).length;
+  const next=prod.filter(p=>p.nextCategory||p.nextAngle).slice(0,3);
+  app.innerHTML=`
+    <section class="hero"><h2>萌愛ちゃんワールド</h2><p>人物・写真・関係・予定・制作進行を、黒×シャンパンゴールドでひとまとめ。データはこの端末のブラウザ内に保存されます。</p></section>
+    <div class="section-title"><h2>現在の状況</h2><small>${today}</small></div>
+    <div class="grid-2">
+      <div class="stat"><b>${members.length}</b><small>登録メンバー</small></div>
+      <div class="stat"><b>${adopted}</b><small>採用画像</small></div>
+      <div class="stat"><b>${todayEvents.length}</b><small>今日の予定</small></div>
+      <div class="stat"><b>${next.length}</b><small>次の制作</small></div>
+    </div>
+    <div class="section-title"><h2>今日の予定</h2><button class="ghost-btn tiny" data-action="schedule-add">＋追加</button></div>
+    <div>${todayEvents.length?todayEvents.map(e=>eventCard(e,members)).join(''):`<div class="empty">今日の予定はまだありません</div>`}</div>
+    <div class="section-title"><h2>次に生成する前の確認</h2><small>制作基準</small></div>
+    <div>${next.length?next.map(p=>productionNextCard(p,members)).join(''):`<div class="empty">「制作管理」で次の角度・基準画像を登録するとここに表示されます。</div>`}</div>
+  `;
+  bindCommon();
+}
+function eventCard(e,members){const m=members.find(x=>x.id===e.memberId);return `<div class="card row"><div class="grow"><b>${esc(e.start)}–${esc(e.end)}　${esc(m?.name||'未指定')}</b><div class="muted tiny">${esc(e.content||'予定')} ${e.place?`・${esc(e.place)}`:''}</div></div><span class="badge ${e.state==='tentative'?'warn':'ok'}">${e.state==='tentative'?'仮':'確定'}</span></div>`}
+function productionNextCard(p,members){const m=members.find(x=>x.id===p.memberId);return `<div class="card"><div class="row between"><b>${esc(m?.name||'不明')}</b><span class="badge warn">次：${esc(p.nextCategory||'')} ${esc(p.nextAngle||'')}</span></div><div class="tiny muted" style="margin-top:8px">${esc(p.recheckMemo||'生成前に採用画像の基準強度を再確認')}</div></div>`}
+
+async function renderMembers(){
+  const members=await activeMembers();
+  const jobs=['すべて',...new Set(members.map(m=>m.job).filter(Boolean))];
+  const filtered=members.filter(m=>{const q=state.search.trim().toLowerCase();const hit=!q||[m.name,m.kana,m.job,m.affiliation].some(v=>String(v||'').toLowerCase().includes(q));const job=state.job==='すべて'||m.job===state.job;return hit&&job;});
+  app.innerHTML=`
+    <input id="memberSearch" class="search" placeholder="名前・職業・所属で検索" value="${esc(state.search)}" />
+    <div class="chips">${jobs.map(j=>`<button class="chip ${state.job===j?'active':''}" data-job="${esc(j)}">${esc(j)}</button>`).join('')}</div>
+    <div class="section-title"><h2>メンバー</h2><small>${filtered.length}人</small></div>
+    <div>${filtered.length?filtered.map(memberCard).join(''):`<div class="empty">該当するメンバーがいません</div>`}</div>
+  `;
+  document.getElementById('memberSearch').addEventListener('input',e=>{state.search=e.target.value;renderMembers()});
+  document.querySelectorAll('[data-job]').forEach(b=>b.addEventListener('click',()=>{state.job=b.dataset.job;renderMembers()}));
+  document.querySelectorAll('[data-member]').forEach(b=>b.addEventListener('click',()=>{state.memberId=b.dataset.member;state.memberTab='profile';render()}));
+}
+function memberCard(m){return `<div class="member-card" data-member="${m.id}"><div class="avatar avatar-placeholder">${esc(initials(m.name))}</div><div class="grow"><div class="member-name">${esc(m.name)} ${m.favorite?'★':''}</div><div class="muted tiny">${m.age?`${m.age}歳 ・ `:''}${esc(m.job||'職業未設定')}</div><div class="badges"><span class="badge ${m.status==='確定'?'ok':'warn'}">${esc(m.status||'候補')}</span>${m.tags?`<span class="badge">${esc(m.tags)}</span>`:''}</div></div><span class="gold">›</span></div>`}
+
+async function renderMemberDetail(id){
+  const m=await getOne('members',id);if(!m){state.memberId=null;return render()}
