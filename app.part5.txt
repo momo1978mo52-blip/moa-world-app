@@ -94,8 +94,8 @@ memberTabHtml=function(m,images,relations,schedules,prod){
   }
   if(state.memberTab==='gallery'){
     const faceActual=images.filter(i=>i.category==='顔8方向').length,bodyActual=images.filter(i=>i.category==='体型8方向').length;
-    const face=FACE_ANGLES.map(a=>slotHtml(a,images.find(i=>i.category==='顔8方向'&&i.angle===a))).join('');
-    const body=BODY_ANGLES.map(a=>slotHtml(a,images.find(i=>i.category==='体型8方向'&&i.angle===a))).join('');
+    const face=FACE_ANGLES.map(a=>slotHtml('顔8方向',a,images.find(i=>i.category==='顔8方向'&&i.angle===a))).join('');
+    const body=BODY_ANGLES.map(a=>slotHtml('体型8方向',a,images.find(i=>i.category==='体型8方向'&&i.angle===a))).join('');
     const albums=ALBUMS.map(a=>{const xs=images.filter(i=>i.category===a);return `<div class="album"><b>${a}</b><span class="count">${xs.length}</span><small class="muted"> 枚</small></div>`}).join('');
     const fr=Number.isFinite(m.faceProgress)?m.faceProgress:'－',br=Number.isFinite(m.bodyProgress)?m.bodyProgress:'－';
     return `<div class="section-title"><h2>顔8方向</h2><small>画像登録 ${faceActual}/8 ・進行記録 ${fr}/8</small></div><div class="angle-grid">${face}</div><div class="section-title"><h2>体型8方向</h2><small>画像登録 ${bodyActual}/8 ・進行記録 ${br}/8</small></div><div class="angle-grid">${body}</div><div class="section-title"><h2>アルバム</h2></div><div class="album-grid">${albums}</div>`;
