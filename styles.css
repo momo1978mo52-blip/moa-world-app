@@ -63,6 +63,8 @@ h1{font-size:23px;margin:2px 0 0;font-weight:800}
 .avatar{width:58px;height:58px;border-radius:16px;object-fit:cover;border:1px solid rgba(216,191,121,.32);background:#222}
 .avatar.large{width:92px;height:92px;border-radius:22px}
 .avatar-placeholder{display:grid;place-items:center;color:var(--gold);font-weight:900;background:linear-gradient(145deg,#232016,#111)}
+.profile-photo-card{overflow:hidden}
+.profile-photo{display:block;width:100%;max-height:520px;object-fit:contain;background:#090909;border:1px solid rgba(216,191,121,.18);border-radius:14px;margin-top:12px}
 .member-name{font-weight:800;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.badge{border:1px solid #3a3423;border-radius:999px;padding:3px 7px;font-size:10px;color:#d8d0bc;background:#15140f}
 .badge.ok{border-color:#31543a;color:#bce6c6}.badge.warn{border-color:#695629;color:#ffe09b}.badge.danger{border-color:#6c3434;color:#ffc1c1}
