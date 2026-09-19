@@ -84,14 +84,13 @@ async function renderHome(){
     <div>${next.length?next.map(p=>productionNextCard(p,members)).join(''):`<div class="empty">「制作管理」で次の角度・基準画像を登録するとここに表示されます。</div>`}</div>
   `;
   bindCommon();
-  document.querySelectorAll('[data-next-member]').forEach(card=>{
-    const openProfile=()=>{state.memberId=card.dataset.nextMember;state.memberTab='profile';render();};
-    card.addEventListener('click',openProfile);
-    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openProfile();}});
+  document.querySelectorAll('[data-member]').forEach(card=>{
+    card.addEventListener('click',()=>{state.memberId=card.dataset.member;state.memberTab='profile';render();});
+    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}});
   });
 }
 function eventCard(e,members){const m=members.find(x=>x.id===e.memberId);return `<div class="card row"><div class="grow"><b>${esc(e.start)}–${esc(e.end)}　${esc(m?.name||'未指定')}</b><div class="muted tiny">${esc(e.content||'予定')} ${e.place?`・${esc(e.place)}`:''}</div></div><span class="badge ${e.state==='tentative'?'warn':'ok'}">${e.state==='tentative'?'仮':'確定'}</span></div>`}
-function productionNextCard(p,members){const m=members.find(x=>x.id===p.memberId);const link=m?` data-next-member="${esc(m.id)}" role="button" tabindex="0" aria-label="${esc(m.name)}のプロフィールを開く" style="cursor:pointer"`:'';return `<div class="card"${link}><div class="row between"><b>${esc(m?.name||'不明')}</b><span class="badge warn">次：${esc(p.nextCategory||'')} ${esc(p.nextAngle||'')}</span></div><div class="tiny muted" style="margin-top:8px">${esc(p.recheckMemo||'生成前に採用画像の基準強度を再確認')}</div></div>`}
+function productionNextCard(p,members){const m=members.find(x=>x.id===p.memberId);const link=m?` data-member="${esc(m.id)}" role="button" tabindex="0" aria-label="${esc(m.name)}のプロフィールを開く" style="cursor:pointer"`:'';return `<div class="card"${link}><div class="row between"><b>${esc(m?.name||'不明')}</b><span class="badge warn">次：${esc(p.nextCategory||'')} ${esc(p.nextAngle||'')}</span></div><div class="tiny muted" style="margin-top:8px">${esc(p.recheckMemo||'生成前に採用画像の基準強度を再確認')}</div></div>`}
 
 async function renderMembers(){
   const members=await activeMembers();
