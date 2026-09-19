@@ -4,40 +4,72 @@ async function relationModal(memberId){const members=await activeMembers();const
 
 async function productionModal(memberId){const current=(await getAll('production')).find(p=>p.memberId===memberId);showModal('次の制作を設定',`<form id="prodForm" class="form"><div class="field"><label>次カテゴリ</label><select name="category">${['顔8方向','体型8方向',...ALBUMS].map(x=>`<option ${current?.nextCategory===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>次角度</label><select name="angle"><option value="">角度なし</option>${FACE_ANGLES.map(x=>`<option ${current?.nextAngle===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>最優先の基準画像ID</label><input name="primary" value="${esc(current?.primaryImageId||'')}"></div><div class="field"><label>補助基準画像ID（カンマ区切り）</label><input name="supp" value="${esc((current?.supplementalImageIds||[]).join(','))}"></div><div class="field"><label>再評価メモ</label><textarea name="recheck">${esc(current?.recheckMemo||'')}</textarea></div><div class="field"><label>生成時の注意</label><textarea name="caution">${esc(current?.cautions||'')}</textarea></div><button class="gold-btn" type="submit">保存</button></form>`);document.getElementById('prodForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const obj={id:current?.id||`prod_${memberId}`,memberId,nextCategory:f.get('category'),nextAngle:f.get('angle'),primaryImageId:f.get('primary'),supplementalImageIds:String(f.get('supp')||'').split(',').map(x=>x.trim()).filter(Boolean),recheckMemo:f.get('recheck'),cautions:f.get('caution'),updatedAt:now()};await put('production',obj);await log('制作設定','production',obj.id,`${obj.nextCategory} ${obj.nextAngle}`);closeModal();toast('次の制作を保存しました');render()};}
 
-async function exportData(){
+async function exportData(includeImages=false){
+  showModal(includeImages?'画像込み完全バックアップ':'軽量バックアップ',
+    '<div id="backupBuildStatus" class="empty">バックアップを作成しています…</div>');
+  const status=document.getElementById('backupBuildStatus');
   try{
-    const data={version:'9.1',exportedAt:now(),stores:{}};
-    for(const s of STORES)data.stores[s]=await getAll(s);
-    const json=JSON.stringify(data,null,2);
-    const filename=`moa-world-backup-${toDateKey(new Date())}.json`;
-    const file=new File([json],filename,{type:'application/json'});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      try{
-        await navigator.share({files:[file],title:'MOA WORLD バックアップ'});
-        toast('バックアップを保存・共有しました');
-        return;
-      }catch(err){
-        if(err?.name==='AbortError'){toast('バックアップ保存をキャンセルしました');return;}
-        console.warn('Web Share failed, falling back to download',err);
+    const data={version:'9.2',backupKind:includeImages?'full':'light',includesImageData:!!includeImages,exportedAt:now(),stores:{}};
+    for(const s of STORES){
+      const rows=await getAll(s);
+      if(s==='images'&&!includeImages){
+        data.stores[s]=rows.map(row=>{
+          const copy={...row};
+          if('dataUrl' in copy)delete copy.dataUrl;
+          return copy;
+        });
+      }else{
+        data.stores[s]=rows;
       }
     }
-    const blob=new Blob([json],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download=filename;
-    a.style.display='none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),5000);
-    toast('バックアップの保存を開始しました');
+    const json=JSON.stringify(data);
+    const bytes=new Blob([json]).size;
+    const sizeText=bytes<1024*1024?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/1024/1024).toFixed(1)} MB`;
+    const filename=`moa-world-${includeImages?'full':'light'}-backup-${toDateKey(new Date())}.json`;
+    status.className='';
+    status.innerHTML=`<div class="card"><b>バックアップ準備完了</b><div class="tiny muted" style="margin-top:8px">${includeImages?'画像本体を含む完全版':'画像本体を除いた軽量版'} ・ ${sizeText}</div></div><button class="gold-btn" id="saveBackupFile" type="button">端末に保存</button><button class="ghost-btn" id="cancelBackupFile" type="button">キャンセル</button>`;
+    document.getElementById('saveBackupFile').onclick=()=>{
+      try{
+        const blob=new Blob([json],{type:'application/json'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;
+        a.download=filename;
+        a.rel='noopener';
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),30000);
+        closeModal();
+        toast('バックアップを保存しました');
+      }catch(err){
+        console.error(err);
+        alert('保存に失敗しました: '+(err?.message||err));
+      }
+    };
+    document.getElementById('cancelBackupFile').onclick=closeModal;
   }catch(err){
     console.error(err);
-    alert('バックアップの書き出しに失敗しました: '+(err?.message||err));
+    if(status){
+      status.className='empty';
+      status.innerHTML=`バックアップ作成に失敗しました。<br><small>${esc(err?.message||err)}</small>`;
+    }else{
+      alert('バックアップ作成に失敗しました: '+(err?.message||err));
+    }
   }
 }
-importFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());for(const s of STORES){for(const row of data.stores?.[s]||[])await put(s,row)}await log('復元','backup','import',`バックアップ ${data.exportedAt||''} を読み込み`);toast('バックアップを読み込みました');render()}catch(err){alert('読み込みに失敗しました: '+err.message)}finally{importFile.value=''}});
+
+function readBackupFileText(file){
+  if(file&&typeof file.text==='function')return file.text();
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(String(r.result||''));
+    r.onerror=()=>reject(r.error||new Error('ファイルを読み込めませんでした'));
+    r.readAsText(file);
+  });
+}
+importFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await readBackupFileText(file));for(const s of STORES){for(const row of data.stores?.[s]||[]){if(s==='images'&&!row.dataUrl){const old=await getOne('images',row.id);await put(s,old?.dataUrl?{...row,dataUrl:old.dataUrl}:row)}else await put(s,row)}}await log('復元','backup','import',`バックアップ ${data.exportedAt||''} を読み込み`);toast(data.includesImageData===false?'軽量バックアップを読み込みました':'バックアップを読み込みました');render()}catch(err){alert('読み込みに失敗しました: '+err.message)}finally{importFile.value=''}});
 
 function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 
