@@ -4,7 +4,39 @@ async function relationModal(memberId){const members=await activeMembers();const
 
 async function productionModal(memberId){const current=(await getAll('production')).find(p=>p.memberId===memberId);showModal('次の制作を設定',`<form id="prodForm" class="form"><div class="field"><label>次カテゴリ</label><select name="category">${['顔8方向','体型8方向',...ALBUMS].map(x=>`<option ${current?.nextCategory===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>次角度</label><select name="angle"><option value="">角度なし</option>${FACE_ANGLES.map(x=>`<option ${current?.nextAngle===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>最優先の基準画像ID</label><input name="primary" value="${esc(current?.primaryImageId||'')}"></div><div class="field"><label>補助基準画像ID（カンマ区切り）</label><input name="supp" value="${esc((current?.supplementalImageIds||[]).join(','))}"></div><div class="field"><label>再評価メモ</label><textarea name="recheck">${esc(current?.recheckMemo||'')}</textarea></div><div class="field"><label>生成時の注意</label><textarea name="caution">${esc(current?.cautions||'')}</textarea></div><button class="gold-btn" type="submit">保存</button></form>`);document.getElementById('prodForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const obj={id:current?.id||`prod_${memberId}`,memberId,nextCategory:f.get('category'),nextAngle:f.get('angle'),primaryImageId:f.get('primary'),supplementalImageIds:String(f.get('supp')||'').split(',').map(x=>x.trim()).filter(Boolean),recheckMemo:f.get('recheck'),cautions:f.get('caution'),updatedAt:now()};await put('production',obj);await log('制作設定','production',obj.id,`${obj.nextCategory} ${obj.nextAngle}`);closeModal();toast('次の制作を保存しました');render()};}
 
-async function exportData(){const data={version:'9.1',exportedAt:now(),stores:{}};for(const s of STORES)data.stores[s]=await getAll(s);const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`moa-world-backup-${toDateKey(new Date())}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('バックアップを書き出しました')}
+async function exportData(){
+  try{
+    const data={version:'9.1',exportedAt:now(),stores:{}};
+    for(const s of STORES)data.stores[s]=await getAll(s);
+    const json=JSON.stringify(data,null,2);
+    const filename=`moa-world-backup-${toDateKey(new Date())}.json`;
+    const file=new File([json],filename,{type:'application/json'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({files:[file],title:'MOA WORLD バックアップ'});
+        toast('バックアップを保存・共有しました');
+        return;
+      }catch(err){
+        if(err?.name==='AbortError'){toast('バックアップ保存をキャンセルしました');return;}
+        console.warn('Web Share failed, falling back to download',err);
+      }
+    }
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=filename;
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast('バックアップの保存を開始しました');
+  }catch(err){
+    console.error(err);
+    alert('バックアップの書き出しに失敗しました: '+(err?.message||err));
+  }
+}
 importFile.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());for(const s of STORES){for(const row of data.stores?.[s]||[])await put(s,row)}await log('復元','backup','import',`バックアップ ${data.exportedAt||''} を読み込み`);toast('バックアップを読み込みました');render()}catch(err){alert('読み込みに失敗しました: '+err.message)}finally{importFile.value=''}});
 
 function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
