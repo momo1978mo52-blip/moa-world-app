@@ -443,3 +443,99 @@ renderMemberDetail=async function angleRenderMemberDetail(id){
     slot.onclick=()=>angleSlotModal(id,slot.dataset.angleCategory,slot.dataset.angle,slot.dataset.imageId||'');
   });
 };
+
+
+// ---- Poster album direct add / preview / replace ----
+async function posterAlbumModal(memberId){
+  const m=await getOne('members',memberId);
+  if(!m){toast('人物が見つかりません');return;}
+  const posters=(await activeImages())
+    .filter(i=>i.memberId===memberId&&i.category==='ポスター')
+    .sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+
+  const posterCards=posters.length?posters.map((p,index)=>{
+    const img=p.dataUrl?'<img class="angle-modal-preview" src="'+esc(p.dataUrl)+'" alt="'+esc(m.name)+' ポスター'+(index+1)+'">':'';
+    return '<div class="card">'+img+
+      '<div class="row between" style="margin-top:10px">'+
+      '<div><b>ポスター '+(index+1)+'</b><div class="tiny muted">'+esc(p.status||'採用・安定')+'</div></div>'+
+      '<button type="button" class="ghost-btn tiny" data-poster-replace="'+esc(p.id)+'">差し替え</button>'+
+      '</div></div>';
+  }).join(''):'<div class="empty">ポスター写真はまだありません</div>';
+
+  showModal(m.name+'・ポスター','<div class="form">'+
+    '<div class="tiny muted">ここでポスター写真の確認・追加・差し替えができます。</div>'+
+    posterCards+
+    '<form id="posterAddForm" class="form">'+
+    '<div class="field"><label>ポスター写真を追加</label><input name="file" type="file" accept="image/*" required></div>'+
+    '<button class="gold-btn" type="submit">＋ ポスターを追加</button>'+
+    '</form></div>');
+
+  document.getElementById('posterAddForm').onsubmit=async e=>{
+    e.preventDefault();
+    const file=new FormData(e.currentTarget).get('file');
+    const dataUrl=await fileToDataURL(file);
+    const obj={
+      id:uid('img'),
+      memberId,
+      category:'ポスター',
+      angle:'',
+      status:'採用・安定',
+      basis:'使用しない',
+      memo:'紹介ポスター',
+      dataUrl,
+      createdAt:now(),
+      updatedAt:now(),
+      deletedAt:null
+    };
+    await put('images',obj);
+    await log('ポスター画像追加','image',obj.id,m.name);
+    closeModal();
+    toast('ポスター写真を追加しました');
+    state.memberTab='gallery';
+    renderMemberDetail(memberId);
+  };
+
+  document.querySelectorAll('[data-poster-replace]').forEach(btn=>{
+    btn.onclick=()=>{
+      const input=document.createElement('input');
+      input.type='file';
+      input.accept='image/*';
+      input.onchange=async()=>{
+        const file=input.files?.[0];
+        if(!file)return;
+        if(!confirm('このポスター写真を、新しく選んだ写真へ差し替えますか？'))return;
+        const current=await getOne('images',btn.dataset.posterReplace);
+        if(!current||current.deletedAt){toast('画像が見つかりません');return;}
+        current.dataUrl=await fileToDataURL(file);
+        current.updatedAt=now();
+        await put('images',current);
+        await log('ポスター画像差し替え','image',current.id,m.name);
+        closeModal();
+        toast('ポスター写真を差し替えました');
+        state.memberTab='gallery';
+        renderMemberDetail(memberId);
+      };
+      input.click();
+    };
+  });
+}
+
+const _posterRenderMemberDetail=renderMemberDetail;
+renderMemberDetail=async function posterRenderMemberDetail(id){
+  await _posterRenderMemberDetail(id);
+  document.querySelectorAll('.album').forEach(album=>{
+    const name=album.querySelector('b')?.textContent?.trim();
+    if(name!=='ポスター')return;
+    album.setAttribute('role','button');
+    album.setAttribute('tabindex','0');
+    album.setAttribute('aria-label','ポスター写真を確認・追加・差し替え');
+    album.style.cursor='pointer';
+    album.onclick=()=>posterAlbumModal(id);
+    album.onkeydown=e=>{
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        posterAlbumModal(id);
+      }
+    };
+  });
+};
