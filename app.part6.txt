@@ -136,6 +136,129 @@ renderMemberDetail=async function iconRenderMemberDetail(id){
   picker.onclick=()=>iconPhotoModal(id);
 };
 
+
+// ---- Angle master automatic orientation check (MediaPipe Pose Landmarker) ----
+// Assistive only: mismatches warn, but the user can still save.
+const ANGLE_CHECK_ENGINE='mediapipe-pose-1.0.1-v1';
+const ANGLE_CHECK_CDN='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs';
+const ANGLE_CHECK_WASM='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm';
+const ANGLE_CHECK_MODEL='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+let anglePoseLandmarkerPromise=null;
+
+function angleLandmarkScore(p){
+  if(!p)return 0;
+  if(Number.isFinite(p.visibility))return p.visibility;
+  if(Number.isFinite(p.presence))return p.presence;
+  return 1;
+}
+function angleAverage(values){const xs=values.filter(Number.isFinite);return xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;}
+function angleImageFromDataUrl(dataUrl){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error('画像を読み込めませんでした'));
+    img.src=dataUrl;
+  });
+}
+async function getAnglePoseLandmarker(){
+  if(!anglePoseLandmarkerPromise){
+    anglePoseLandmarkerPromise=(async()=>{
+      const visionModule=await import(ANGLE_CHECK_CDN);
+      const vision=await visionModule.FilesetResolver.forVisionTasks(ANGLE_CHECK_WASM);
+      return visionModule.PoseLandmarker.createFromOptions(vision,{
+        baseOptions:{modelAssetPath:ANGLE_CHECK_MODEL},
+        runningMode:'IMAGE',
+        numPoses:1,
+        minPoseDetectionConfidence:0.45,
+        minPosePresenceConfidence:0.45,
+        minTrackingConfidence:0.45
+      });
+    })();
+  }
+  try{return await anglePoseLandmarkerPromise;}
+  catch(err){anglePoseLandmarkerPromise=null;throw err;}
+}
+function classifyAnglePose(result,targetAngle){
+  const lm=result?.landmarks?.[0];
+  const world=result?.worldLandmarks?.[0];
+  if(!lm||lm.length<13)return {status:'uncertain',predicted:'判定不能',confidence:'低',reason:'人物の姿勢ランドマークを十分に検出できませんでした'};
+
+  const nose=lm[0],leftEye=lm[2],rightEye=lm[5],leftEar=lm[7],rightEar=lm[8],leftShoulder=lm[11],rightShoulder=lm[12];
+  const shoulderVis=Math.min(angleLandmarkScore(leftShoulder),angleLandmarkScore(rightShoulder));
+  if(shoulderVis<0.25)return {status:'uncertain',predicted:'判定不能',confidence:'低',reason:'両肩を十分に検出できませんでした'};
+
+  const faceVis=angleAverage([nose,leftEye,rightEye,leftEar,rightEar].map(angleLandmarkScore));
+  let yawAbs=null;
+  let direction='';
+
+  if(world?.[11]&&world?.[12]){
+    const dx=Math.abs(Number(world[11].x)-Number(world[12].x));
+    const dz=Number(world[11].z)-Number(world[12].z);
+    if(Number.isFinite(dx)&&Number.isFinite(dz)){
+      yawAbs=Math.atan2(Math.abs(dz),Math.max(dx,0.001))*180/Math.PI;
+      direction=dz<0?'左':'右';
+    }
+  }
+
+  if(faceVis>=0.32&&nose&&leftEye&&rightEye&&angleLandmarkScore(leftEye)>=0.2&&angleLandmarkScore(rightEye)>=0.2){
+    const eyeMid=(Number(leftEye.x)+Number(rightEye.x))/2;
+    const delta=Number(nose.x)-eyeMid;
+    if(Number.isFinite(delta)&&Math.abs(delta)>0.008)direction=delta<0?'左':'右';
+  }
+
+  if(!Number.isFinite(yawAbs)){
+    const shoulderSpan=Math.abs(Number(leftShoulder.x)-Number(rightShoulder.x));
+    if(nose&&Number.isFinite(nose.x)&&shoulderSpan>0.01){
+      const mid=(Number(leftShoulder.x)+Number(rightShoulder.x))/2;
+      const offset=Math.abs(Number(nose.x)-mid)/shoulderSpan;
+      yawAbs=Math.min(90,offset*160);
+      if(!direction&&offset>0.05)direction=Number(nose.x)<mid?'左':'右';
+    }
+  }
+  if(!Number.isFinite(yawAbs))return {status:'uncertain',predicted:'判定不能',confidence:'低',reason:'回転量を計算できませんでした'};
+
+  let predicted='';
+  if(yawAbs<24){
+    predicted=faceVis>=0.30?'正面0°':'真後ろ180°';
+  }else if(yawAbs<68){
+    if(!direction)return {status:'uncertain',predicted:'45°付近',confidence:'低',reason:'左右方向を安定して判定できませんでした'};
+    predicted=direction+(faceVis>=0.30?'前45°':'後ろ45°');
+  }else{
+    if(!direction)return {status:'uncertain',predicted:'90°付近',confidence:'低',reason:'左右方向を安定して判定できませんでした'};
+    predicted=direction+'90°';
+  }
+
+  const nearBoundary=Math.abs(yawAbs-24)<7||Math.abs(yawAbs-68)<9;
+  const confidence=(nearBoundary||shoulderVis<0.55||(predicted.indexOf('後ろ')>=0&&faceVis>0.45)||(predicted==='真後ろ180°'&&faceVis>0.22))?'中':'高';
+  const status=nearBoundary?'uncertain':(predicted===targetAngle?'match':'mismatch');
+  const reason=nearBoundary?'回転量が角度区分の境界付近です（推定 '+Math.round(yawAbs)+'°）':'推定 '+Math.round(yawAbs)+'°・顔の見えやすさ '+Math.round(faceVis*100)+'%';
+  return {status,predicted,confidence,reason};
+}
+async function inspectAngleImage(dataUrl,targetAngle){
+  try{
+    const pair=await Promise.all([getAnglePoseLandmarker(),angleImageFromDataUrl(dataUrl)]);
+    const result=pair[0].detect(pair[1]);
+    return {...classifyAnglePose(result,targetAngle),target:targetAngle,engine:ANGLE_CHECK_ENGINE,checkedAt:now()};
+  }catch(err){
+    console.warn('angle check unavailable',err);
+    return {status:'unavailable',predicted:'判定できず',confidence:'低',reason:'自動角度チェックを起動できませんでした',target:targetAngle,engine:ANGLE_CHECK_ENGINE,checkedAt:now()};
+  }
+}
+async function confirmAngleCheckBeforeSave(dataUrl,targetAngle){
+  toast('角度を自動チェック中…');
+  const result=await inspectAngleImage(dataUrl,targetAngle);
+  if(result.status==='match'){
+    toast('角度チェック：'+targetAngle+' と一致');
+    return {proceed:true,result};
+  }
+  if(result.status==='mismatch'){
+    const proceed=confirm('⚠ 角度チェック\n\n登録先：'+targetAngle+'\n自動判定：'+result.predicted+'\n信頼度：'+result.confidence+'\n'+result.reason+'\n\n角度が違う可能性があります。\nそれでもこの枠へ登録しますか？');
+    return {proceed,result};
+  }
+  const proceed=confirm('⚠ 角度チェックは確定できませんでした\n\n登録先：'+targetAngle+'\n判定：'+result.predicted+'\n'+result.reason+'\n\n目視で角度を確認してください。\nそれでも登録しますか？');
+  return {proceed,result};
+}
+
 imageModal=async function(memberId,preferredCategory=''){
   const members=await activeMembers();
   const defaultCategory=preferredCategory||'顔8方向';
@@ -160,7 +283,15 @@ imageModal=async function(memberId,preferredCategory=''){
     const dataUrl=await fileToDataURL(file);
     const category=f.get('category');
     const isProfile=category===PROFILE_CATEGORY;
-    const obj={id:uid('img'),memberId:f.get('memberId'),category,angle:['顔8方向','体型8方向'].includes(category)?f.get('angle'):'',status:isProfile?'採用・安定':f.get('status'),basis:isProfile?'使用しない':f.get('basis'),memo:f.get('memo'),dataUrl,createdAt:now(),updatedAt:now(),deletedAt:null};
+    const isAngleMaster=['顔8方向','体型8方向'].includes(category);
+    const targetAngle=isAngleMaster?f.get('angle'):'';
+    let angleCheck=null;
+    if(isAngleMaster){
+      const checked=await confirmAngleCheckBeforeSave(dataUrl,targetAngle);
+      angleCheck=checked.result;
+      if(!checked.proceed)return;
+    }
+    const obj={id:uid('img'),memberId:f.get('memberId'),category,angle:targetAngle,status:isProfile?'採用・安定':f.get('status'),basis:isProfile?'使用しない':f.get('basis'),memo:f.get('memo'),dataUrl,angleCheck,createdAt:now(),updatedAt:now(),deletedAt:null};
     await put('images',obj);
     await log('画像追加','image',obj.id,`${category} ${obj.angle||''}`);
     closeModal();
@@ -197,16 +328,19 @@ async function angleSlotModal(memberId,category,angle,imageId=''){
     if(current&&!confirm(`${angle}の現在画像を、新しく選んだ画像へ差し替えますか？`))return;
     const f=new FormData(e.currentTarget);
     const dataUrl=await fileToDataURL(f.get('file'));
+    const checked=await confirmAngleCheckBeforeSave(dataUrl,angle);
+    if(!checked.proceed)return;
     if(current){
       current.dataUrl=dataUrl;
       current.status=f.get('status');
       current.basis=f.get('basis');
       current.memo=f.get('memo');
+      current.angleCheck=checked.result;
       current.updatedAt=now();
       await put('images',current);
       await log('角度画像差し替え','image',current.id,`${category} ${angle}`);
     }else{
-      const obj={id:uid('img'),memberId,category,angle,status:f.get('status'),basis:f.get('basis'),memo:f.get('memo'),dataUrl,createdAt:now(),updatedAt:now(),deletedAt:null};
+      const obj={id:uid('img'),memberId,category,angle,status:f.get('status'),basis:f.get('basis'),memo:f.get('memo'),dataUrl,angleCheck:checked.result,createdAt:now(),updatedAt:now(),deletedAt:null};
       await put('images',obj);
       await log('角度画像追加','image',obj.id,`${category} ${angle}`);
     }
