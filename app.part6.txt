@@ -178,10 +178,59 @@ async function getAnglePoseLandmarker(){
   try{return await anglePoseLandmarkerPromise;}
   catch(err){anglePoseLandmarkerPromise=null;throw err;}
 }
-function classifyAnglePose(result,targetAngle){
+
+function classifyFaceMasterAngle(lm,targetAngle){
+  const nose=lm?.[0],leftEye=lm?.[2],rightEye=lm?.[5],leftEar=lm?.[7],rightEar=lm?.[8];
+  if(!nose||!leftEye||!rightEye)return null;
+
+  const leftEyeScore=angleLandmarkScore(leftEye),rightEyeScore=angleLandmarkScore(rightEye);
+  const leftEarScore=angleLandmarkScore(leftEar),rightEarScore=angleLandmarkScore(rightEar);
+  const eyeMid=(Number(leftEye.x)+Number(rightEye.x))/2;
+  const eyeSpan=Math.abs(Number(leftEye.x)-Number(rightEye.x));
+  const delta=Number(nose.x)-eyeMid;
+  if(!Number.isFinite(delta)||!Number.isFinite(eyeSpan)||eyeSpan<0.003)return null;
+
+  const ratio=Math.abs(delta)/Math.max(eyeSpan,0.006);
+  const direction=delta<0?'左':'右';
+  const sideOcclusion=Math.max(Math.abs(leftEyeScore-rightEyeScore),Math.abs(leftEarScore-rightEarScore));
+  const predicted=ratio<0.20?'正面0°':ratio<0.55?direction+'前45°':direction+'90°';
+  const detail='顔向き比 '+ratio.toFixed(2)+'・左右の見え方差 '+sideOcclusion.toFixed(2)+'（顔8方向は肩・胴体を判定から除外）';
+
+  if(targetAngle==='正面0°'){
+    if(ratio<0.20&&sideOcclusion<0.35)return {status:'match',predicted:'正面0°',confidence:'高',reason:detail};
+    if(ratio<0.30)return {status:'uncertain',predicted,confidence:'中',reason:detail};
+    return {status:'mismatch',predicted,confidence:'中',reason:detail};
+  }
+
+  if(targetAngle==='左前45°'||targetAngle==='右前45°'){
+    const wanted=targetAngle.startsWith('左')?'左':'右';
+    if(direction!==wanted&&ratio>=0.20)return {status:'mismatch',predicted,confidence:'中',reason:detail};
+    if(ratio>=0.20&&ratio<0.58&&sideOcclusion<0.60)return {status:'match',predicted:targetAngle,confidence:ratio>=0.28?'高':'中',reason:detail};
+    if(ratio>=0.15&&ratio<0.75)return {status:'uncertain',predicted,confidence:'中',reason:detail};
+    return {status:'mismatch',predicted,confidence:'中',reason:detail};
+  }
+
+  if(targetAngle==='左90°'||targetAngle==='右90°'){
+    const wanted=targetAngle.startsWith('左')?'左':'右';
+    if(direction!==wanted&&ratio>=0.20)return {status:'mismatch',predicted,confidence:'中',reason:detail};
+    // A profile face may still have a front-facing torso. For face masters,
+    // strong nose offset OR one-sided eye/ear visibility is enough for 90°.
+    if(ratio>=0.50||sideOcclusion>=0.38)return {status:'match',predicted:targetAngle,confidence:(ratio>=0.65||sideOcclusion>=0.52)?'高':'中',reason:detail};
+    if(ratio>=0.30)return {status:'uncertain',predicted,confidence:'中',reason:detail};
+    return {status:'mismatch',predicted,confidence:'中',reason:detail};
+  }
+  return null;
+}
+
+function classifyAnglePose(result,targetAngle,category=''){
   const lm=result?.landmarks?.[0];
   const world=result?.worldLandmarks?.[0];
   if(!lm||lm.length<13)return {status:'uncertain',predicted:'判定不能',confidence:'低',reason:'人物の姿勢ランドマークを十分に検出できませんでした'};
+
+  if(category==='顔8方向'&&['正面0°','左前45°','右前45°','左90°','右90°'].includes(targetAngle)){
+    const faceResult=classifyFaceMasterAngle(lm,targetAngle);
+    if(faceResult)return faceResult;
+  }
 
   const nose=lm[0],leftEye=lm[2],rightEye=lm[5],leftEar=lm[7],rightEar=lm[8],leftShoulder=lm[11],rightShoulder=lm[12];
   const shoulderVis=Math.min(angleLandmarkScore(leftShoulder),angleLandmarkScore(rightShoulder));
@@ -234,19 +283,19 @@ function classifyAnglePose(result,targetAngle){
   const reason=nearBoundary?'回転量が角度区分の境界付近です（推定 '+Math.round(yawAbs)+'°）':'推定 '+Math.round(yawAbs)+'°・顔の見えやすさ '+Math.round(faceVis*100)+'%';
   return {status,predicted,confidence,reason};
 }
-async function inspectAngleImage(dataUrl,targetAngle){
+async function inspectAngleImage(dataUrl,targetAngle,category=''){
   try{
     const pair=await Promise.all([getAnglePoseLandmarker(),angleImageFromDataUrl(dataUrl)]);
     const result=pair[0].detect(pair[1]);
-    return {...classifyAnglePose(result,targetAngle),target:targetAngle,engine:ANGLE_CHECK_ENGINE,checkedAt:now()};
+    return {...classifyAnglePose(result,targetAngle,category),target:targetAngle,category,engine:ANGLE_CHECK_ENGINE,checkedAt:now()};
   }catch(err){
     console.warn('angle check unavailable',err);
-    return {status:'unavailable',predicted:'判定できず',confidence:'低',reason:'自動角度チェックを起動できませんでした',target:targetAngle,engine:ANGLE_CHECK_ENGINE,checkedAt:now()};
+    return {status:'unavailable',predicted:'判定できず',confidence:'低',reason:'自動角度チェックを起動できませんでした',target:targetAngle,category,engine:ANGLE_CHECK_ENGINE,checkedAt:now()};
   }
 }
-async function confirmAngleCheckBeforeSave(dataUrl,targetAngle){
+async function confirmAngleCheckBeforeSave(dataUrl,targetAngle,category=''){
   toast('角度を自動チェック中…');
-  const result=await inspectAngleImage(dataUrl,targetAngle);
+  const result=await inspectAngleImage(dataUrl,targetAngle,category);
   if(result.status==='match'){
     toast('角度チェック：'+targetAngle+' と一致');
     return {proceed:true,result};
@@ -287,7 +336,7 @@ imageModal=async function(memberId,preferredCategory=''){
     const targetAngle=isAngleMaster?f.get('angle'):'';
     let angleCheck=null;
     if(isAngleMaster){
-      const checked=await confirmAngleCheckBeforeSave(dataUrl,targetAngle);
+      const checked=await confirmAngleCheckBeforeSave(dataUrl,targetAngle,category);
       angleCheck=checked.result;
       if(!checked.proceed)return;
     }
@@ -328,7 +377,7 @@ async function angleSlotModal(memberId,category,angle,imageId=''){
     if(current&&!confirm(`${angle}の現在画像を、新しく選んだ画像へ差し替えますか？`))return;
     const f=new FormData(e.currentTarget);
     const dataUrl=await fileToDataURL(f.get('file'));
-    const checked=await confirmAngleCheckBeforeSave(dataUrl,angle);
+    const checked=await confirmAngleCheckBeforeSave(dataUrl,angle,category);
     if(!checked.proceed)return;
     if(current){
       current.dataUrl=dataUrl;
