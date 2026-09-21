@@ -103,3 +103,12 @@ h1{font-size:23px;margin:2px 0 0;font-weight:800}
 .setting-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #242118}.setting-row:last-child{border-bottom:0}
 .toast{position:fixed;z-index:80;left:50%;bottom:92px;transform:translateX(-50%);background:#252117;color:#f9edc6;border:1px solid #6d5b32;border-radius:999px;padding:10px 14px;font-size:12px;box-shadow:var(--shadow)}
 @media(min-width:620px){.angle-grid{grid-template-columns:repeat(4,1fr)}.album-grid{grid-template-columns:repeat(4,1fr)}.grid-2{grid-template-columns:repeat(4,1fr)}}
+
+
+/* angle auto-detection UX v2 */
+.angle-detected{display:block;margin-top:7px;padding:6px 8px;border-radius:9px;background:#17150f;color:var(--gold2);font-size:11px;font-weight:800}
+.angle-detected.is-mismatch{color:var(--warn);border:1px solid rgba(255,193,92,.28)}
+.angle-auto-box{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #3a3423;border-radius:12px;background:#12110d}
+.angle-auto-box span{font-size:11px;color:#8f887b}
+.angle-auto-box b{margin-left:auto;color:var(--gold2);font-size:13px}
+.angle-auto-box .ghost-btn{margin-left:4px}
