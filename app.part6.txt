@@ -539,3 +539,195 @@ renderMemberDetail=async function posterRenderMemberDetail(id){
     };
   });
 };
+// ---- Angle master auto-detection UX v2 ----
+// Keep the gallery simple: the image itself is checked, small angle drift is allowed,
+// and a clear left/right or slot mismatch is redirected before saving.
+function angleCanonicalPrediction(result){
+  const p=String(result?.predicted||'').trim();
+  return FACE_ANGLES.includes(p)?p:'';
+}
+function angleAutoMetaFromResult(result){
+  if(result?.status==='match')return {status:'採用・安定',basis:'強い'};
+  if(result?.status==='uncertain')return {status:'採用・注意',basis:'補助'};
+  return {status:'修正推奨',basis:'弱い'};
+}
+function angleDisplayPrediction(img){
+  const p=String(img?.angleCheck?.predicted||'').trim();
+  return p||'未判定';
+}
+async function decideAngleSlotImage(dataUrl,targetAngle,category=''){
+  toast('角度を自動判定中…');
+  const result=await inspectAngleImage(dataUrl,targetAngle,category);
+  const canonical=angleCanonicalPrediction(result);
+
+  if(result.status==='match'){
+    toast('自動判定：'+targetAngle+' ✓');
+    return {proceed:true,finalAngle:targetAngle,result};
+  }
+
+  if(result.status==='mismatch'&&canonical&&canonical!==targetAngle){
+    const move=confirm(
+      '⚠ 登録先と画像の向きが違います\n\n'+
+      '登録先：'+targetAngle+'\n'+
+      '自動判定：'+canonical+'\n\n'+
+      '自動判定では「'+canonical+'」です。\n\n'+
+      '［OK］ '+canonical+' に登録\n'+
+      '［キャンセル］ 保存しない'
+    );
+    if(!move)return {proceed:false,finalAngle:targetAngle,result};
+    const corrected={
+      ...result,
+      status:'match',
+      predicted:canonical,
+      target:canonical,
+      originalTarget:targetAngle,
+      movedFrom:targetAngle,
+      reason:'登録先を '+targetAngle+' から '+canonical+' へ自動補正'
+    };
+    return {proceed:true,finalAngle:canonical,result:corrected,moved:true};
+  }
+
+  if(result.status==='uncertain'){
+    const proceed=confirm(
+      '角度を自動判定しました\n\n'+
+      '登録先：'+targetAngle+'\n'+
+      '判定：'+String(result.predicted||'判定不能')+'\n\n'+
+      '細かな角度のズレはそのまま使えます。\n'+
+      'この枠として登録しますか？'
+    );
+    return {proceed,finalAngle:targetAngle,result};
+  }
+
+  if(result.status==='unavailable'){
+    const proceed=confirm(
+      '自動判定を起動できませんでした。\n\n'+
+      '登録先：'+targetAngle+'\n\n'+
+      '目視確認でこの枠へ登録しますか？'
+    );
+    return {proceed,finalAngle:targetAngle,result};
+  }
+
+  const proceed=confirm(
+    '⚠ この画像は「'+targetAngle+'」としては向きが大きく違う可能性があります。\n\n'+
+    '自動判定：'+String(result.predicted||'判定不能')+'\n\n'+
+    'それでもこの枠へ登録しますか？'
+  );
+  return {proceed,finalAngle:targetAngle,result};
+}
+
+slotHtml=function(category,angle,img){
+  const attrs='data-angle-category="'+esc(category)+'" data-angle="'+esc(angle)+'" data-image-id="'+esc(img?.id||'')+'"';
+  if(!img)return '<button type="button" class="angle-slot empty" '+attrs+' aria-label="'+esc(category)+' '+esc(angle)+'へ画像を追加"><b>'+esc(angle)+'</b><span class="angle-slot-empty">＋ タップして追加</span></button>';
+  const detected=angleDisplayPrediction(img);
+  const canonical=FACE_ANGLES.includes(detected)?detected:'';
+  const mismatch=canonical&&canonical!==angle;
+  return '<button type="button" class="angle-slot has-image" '+attrs+' aria-label="'+esc(category)+' '+esc(angle)+'の画像を確認または差し替え">'+
+    (img.dataUrl?'<img src="'+esc(img.dataUrl)+'" alt="'+esc(angle)+'">':'')+
+    '<b>'+esc(angle)+'</b>'+
+    '<span class="angle-detected '+(mismatch?'is-mismatch':'')+'">自動判定：'+esc(detected)+(mismatch?' ⚠':'')+'</span>'+
+    '<span class="angle-slot-tap">タップして確認・差し替え</span>'+
+    '</button>';
+};
+
+angleSlotModal=async function(memberId,category,angle,imageId=''){
+  const m=await getOne('members',memberId);
+  if(!m){toast('人物が見つかりません');return;}
+  const images=(await activeImages()).filter(i=>i.memberId===memberId);
+  let current=imageId?await getOne('images',imageId):null;
+  if(current?.deletedAt)current=null;
+  if(!current)current=images.find(i=>i.category===category&&i.angle===angle)||null;
+
+  const currentPrediction=angleDisplayPrediction(current);
+  showModal(category+'・'+angle,'<form id="angleSlotForm" class="form">'+
+    '<div class="angle-target"><b>'+esc(m.name)+'</b><span>'+esc(category)+' ／ '+esc(angle)+'</span></div>'+
+    (current?.dataUrl?'<img class="angle-modal-preview" src="'+esc(current.dataUrl)+'" alt="'+esc(m.name)+' '+esc(angle)+'の現在画像">':'')+
+    (current?'<div class="angle-auto-box"><span>現在画像の自動判定</span><b>'+esc(currentPrediction)+'</b><button type="button" class="ghost-btn tiny" id="recheckCurrentAngle">再判定</button></div>':'')+
+    '<div class="tiny muted">画像そのものから向きを確認します。細かな角度のズレは許容し、左右や別角度の入れ間違いは保存前に知らせます。</div>'+
+    '<div class="field"><label>'+(current?'差し替える画像':'追加する画像')+' *</label><input name="file" type="file" accept="image/*" required></div>'+
+    '<div class="field"><label>評価メモ（任意）</label><textarea name="memo" placeholder="髪・本人性・補習内容など">'+esc(current?.memo||'')+'</textarea></div>'+
+    '<button class="gold-btn" type="submit">'+(current?'画像を差し替える':'画像を追加')+'</button>'+
+  '</form>');
+
+  const recheck=document.getElementById('recheckCurrentAngle');
+  if(recheck&&current?.dataUrl){
+    recheck.onclick=async()=>{
+      toast('現在画像を自動判定中…');
+      const result=await inspectAngleImage(current.dataUrl,angle,category);
+      current.angleCheck=result;
+      const meta=angleAutoMetaFromResult(result);
+      current.status=meta.status;
+      current.basis=meta.basis;
+      current.updatedAt=now();
+      await put('images',current);
+      await log('角度画像再判定','image',current.id,category+' '+angle+' → '+String(result.predicted||'判定不能'));
+      const canonical=angleCanonicalPrediction(result);
+      if(canonical&&canonical!==angle){
+        alert('自動判定では「'+canonical+'」です。\n現在の登録先は「'+angle+'」です。\n\n次の差し替え時に正しい枠へ登録できます。');
+      }else{
+        toast('自動判定：'+String(result.predicted||'判定不能'));
+      }
+      closeModal();
+      renderMemberDetail(memberId);
+    };
+  }
+
+  document.getElementById('angleSlotForm').onsubmit=async e=>{
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const dataUrl=await fileToDataURL(f.get('file'));
+    const decision=await decideAngleSlotImage(dataUrl,angle,category);
+    if(!decision.proceed)return;
+
+    const finalAngle=decision.finalAngle||angle;
+    const latest=(await activeImages()).filter(i=>i.memberId===memberId&&i.category===category);
+    let destination=null;
+    if(finalAngle===angle&&current)destination=current;
+    if(!destination)destination=latest.find(i=>i.angle===finalAngle)||null;
+
+    if(destination&&(!current||destination.id!==current.id)){
+      const replace=confirm(
+        finalAngle+' にはすでに画像があります。\n\n'+
+        '自動判定した画像で '+finalAngle+' を差し替えますか？'
+      );
+      if(!replace)return;
+    }else if(destination===current&&current){
+      const replace=confirm(angle+' の現在画像を、新しく選んだ画像へ差し替えますか？');
+      if(!replace)return;
+    }
+
+    const meta=angleAutoMetaFromResult(decision.result);
+    const memo=String(f.get('memo')||'');
+    if(destination){
+      destination.dataUrl=dataUrl;
+      destination.angle=finalAngle;
+      destination.status=meta.status;
+      destination.basis=meta.basis;
+      destination.memo=memo;
+      destination.angleCheck=decision.result;
+      destination.updatedAt=now();
+      await put('images',destination);
+      await log('角度画像差し替え','image',destination.id,category+' '+finalAngle+(decision.moved?'（自動補正）':''));
+    }else{
+      const obj={
+        id:uid('img'),
+        memberId,
+        category,
+        angle:finalAngle,
+        status:meta.status,
+        basis:meta.basis,
+        memo,
+        dataUrl,
+        angleCheck:decision.result,
+        createdAt:now(),
+        updatedAt:now(),
+        deletedAt:null
+      };
+      await put('images',obj);
+      await log('角度画像追加','image',obj.id,category+' '+finalAngle+(decision.moved?'（自動補正）':''));
+    }
+
+    closeModal();
+    toast(decision.moved?'自動判定した '+finalAngle+' に登録しました':finalAngle+' の画像を保存しました');
+    renderMemberDetail(memberId);
+  };
+};
