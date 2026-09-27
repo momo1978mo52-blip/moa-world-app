@@ -622,6 +622,22 @@ async function decideAngleSlotImage(dataUrl,targetAngle,category=''){
   const result=await inspectAngleImage(dataUrl,targetAngle,category);
   const canonical=angleCanonicalPrediction(result);
 
+  // Face 8-direction masters are ultimately judged by the user's selected slot.
+  // Pose Landmarker estimates hidden face points even from rear views, so it is
+  // not reliable enough to block face-master registration.
+  if(category==='顔8方向'&&result.status!=='match'){
+    const manualResult={
+      ...result,
+      status:'uncertain',
+      target:targetAngle,
+      originalPrediction:String(result.predicted||'判定不能'),
+      manualOverride:true,
+      reason:'顔8方向は目視指定を優先。自動判定は参考情報として保存'
+    };
+    toast('顔8方向：目視指定の '+targetAngle+' を優先して保存します');
+    return {proceed:true,finalAngle:targetAngle,result:manualResult,manualOverride:true};
+  }
+
   if(result.status==='match'){
     toast('自動判定：'+targetAngle+' ✓');
     return {proceed:true,finalAngle:targetAngle,result};
@@ -704,7 +720,7 @@ angleSlotModal=async function(memberId,category,angle,imageId=''){
     '<div class="angle-target"><b>'+esc(m.name)+'</b><span>'+esc(category)+' ／ '+esc(angle)+'</span></div>'+
     (current?.dataUrl?'<img class="angle-modal-preview" src="'+esc(current.dataUrl)+'" alt="'+esc(m.name)+' '+esc(angle)+'の現在画像">':'')+
     (current?'<div class="angle-auto-box"><span>現在画像の自動判定</span><b>'+esc(currentPrediction)+'</b><button type="button" class="ghost-btn tiny" id="recheckCurrentAngle">再判定</button></div>':'')+
-    '<div class="tiny muted">画像そのものから向きを確認します。細かな角度のズレは許容し、左右や別角度の入れ間違いは保存前に知らせます。</div>'+
+    '<div class="tiny muted">'+(category==='顔8方向'?'顔8方向は選んだ角度枠を優先して保存します。自動判定は参考表示のみで、判定違いでも登録を止めません。':'画像そのものから向きを確認します。細かな角度のズレは許容し、左右や別角度の入れ間違いは保存前に知らせます。')+'</div>'+
     '<div class="field"><label>'+(current?'差し替える画像':'追加する画像')+' *</label><input name="file" type="file" accept="image/*" required></div>'+
     '<div class="field"><label>評価メモ（任意）</label><textarea name="memo" placeholder="髪・本人性・補習内容など">'+esc(current?.memo||'')+'</textarea></div>'+
     '<button class="gold-btn" type="submit">'+(current?'画像を差し替える':'画像を追加')+'</button>'+
