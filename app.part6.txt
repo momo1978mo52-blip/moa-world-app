@@ -539,6 +539,35 @@ renderMemberDetail=async function posterRenderMemberDetail(id){
     };
   });
 };
+// ---- Profile progress rows -> direct production destinations ----
+async function openProfileProductionTarget(memberId,target){
+  if(target==='poster'){
+    await posterAlbumModal(memberId);
+    return;
+  }
+  state.memberTab='gallery';
+  await renderMemberDetail(memberId);
+  const section=document.querySelector('[data-gallery-section="'+target+'"]');
+  if(section){
+    requestAnimationFrame(()=>section.scrollIntoView({behavior:'smooth',block:'start'}));
+  }
+}
+
+const _profileJumpRenderMemberDetail=renderMemberDetail;
+renderMemberDetail=async function profileJumpRenderMemberDetail(id){
+  await _profileJumpRenderMemberDetail(id);
+  document.querySelectorAll('[data-profile-jump]').forEach(row=>{
+    const activate=()=>openProfileProductionTarget(id,row.dataset.profileJump);
+    row.onclick=activate;
+    row.onkeydown=e=>{
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        activate();
+      }
+    };
+  });
+};
+
 // ---- Angle master auto-detection UX v2 ----
 // Keep the gallery simple: the image itself is checked, small angle drift is allowed,
 // and a clear left/right or slot mismatch is redirected before saving.
