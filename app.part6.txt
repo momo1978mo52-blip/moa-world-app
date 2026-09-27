@@ -599,18 +599,21 @@ renderMemberDetail=async function profileJumpRenderMemberDetail(id){
 };
 
 // ---- Angle master auto-detection UX v2 ----
-// Keep the gallery simple: the image itself is checked, small angle drift is allowed,
-// and a clear left/right or slot mismatch is redirected before saving.
+// Keep the gallery simple: the image itself is checked and small angle drift is allowed.
+// Auto-detection is advisory only: when it disagrees, the user can still register the image
+// into the selected slot after visually confirming it.
 function angleCanonicalPrediction(result){
   const p=String(result?.predicted||'').trim();
   return FACE_ANGLES.includes(p)?p:'';
 }
 function angleAutoMetaFromResult(result){
+  if(result?.manualOverride)return {status:'採用・注意',basis:'補助'};
   if(result?.status==='match')return {status:'採用・安定',basis:'強い'};
   if(result?.status==='uncertain')return {status:'採用・注意',basis:'補助'};
   return {status:'修正推奨',basis:'弱い'};
 }
 function angleDisplayPrediction(img){
+  if(img?.angleCheck?.manualOverride)return '目視確認済み';
   const p=String(img?.angleCheck?.predicted||'').trim();
   return p||'未判定';
 }
@@ -625,25 +628,25 @@ async function decideAngleSlotImage(dataUrl,targetAngle,category=''){
   }
 
   if(result.status==='mismatch'&&canonical&&canonical!==targetAngle){
-    const move=confirm(
-      '⚠ 登録先と画像の向きが違います\n\n'+
+    const proceed=confirm(
+      '⚠ 自動判定では別角度になりました\n\n'+
       '登録先：'+targetAngle+'\n'+
       '自動判定：'+canonical+'\n\n'+
-      '自動判定では「'+canonical+'」です。\n\n'+
-      '［OK］ '+canonical+' に登録\n'+
+      '自動判定は参考情報です。\n'+
+      '画像を目視で確認して「'+targetAngle+'」で正しい場合は［OK］を押してください。\n\n'+
+      '［OK］ 目視を優先して '+targetAngle+' に登録\n'+
       '［キャンセル］ 保存しない'
     );
-    if(!move)return {proceed:false,finalAngle:targetAngle,result};
-    const corrected={
+    if(!proceed)return {proceed:false,finalAngle:targetAngle,result};
+    const manualResult={
       ...result,
-      status:'match',
-      predicted:canonical,
-      target:canonical,
-      originalTarget:targetAngle,
-      movedFrom:targetAngle,
-      reason:'登録先を '+targetAngle+' から '+canonical+' へ自動補正'
+      status:'uncertain',
+      target:targetAngle,
+      originalPrediction:canonical,
+      manualOverride:true,
+      reason:'自動判定は '+canonical+'。目視確認により '+targetAngle+' へ登録'
     };
-    return {proceed:true,finalAngle:canonical,result:corrected,moved:true};
+    return {proceed:true,finalAngle:targetAngle,result:manualResult,manualOverride:true};
   }
 
   if(result.status==='uncertain'){
@@ -679,7 +682,7 @@ slotHtml=function(category,angle,img){
   if(!img)return '<button type="button" class="angle-slot empty" '+attrs+' aria-label="'+esc(category)+' '+esc(angle)+'へ画像を追加"><b>'+esc(angle)+'</b><span class="angle-slot-empty">＋ タップして追加</span></button>';
   const detected=angleDisplayPrediction(img);
   const canonical=FACE_ANGLES.includes(detected)?detected:'';
-  const mismatch=canonical&&canonical!==angle;
+  const mismatch=!img?.angleCheck?.manualOverride&&canonical&&canonical!==angle;
   return '<button type="button" class="angle-slot has-image" '+attrs+' aria-label="'+esc(category)+' '+esc(angle)+'の画像を確認または差し替え">'+
     (img.dataUrl?'<img src="'+esc(img.dataUrl)+'" alt="'+esc(angle)+'">':'')+
     '<b>'+esc(angle)+'</b>'+
@@ -765,7 +768,7 @@ angleSlotModal=async function(memberId,category,angle,imageId=''){
       destination.angleCheck=decision.result;
       destination.updatedAt=now();
       await put('images',destination);
-      await log('角度画像差し替え','image',destination.id,category+' '+finalAngle+(decision.moved?'（自動補正）':''));
+      await log('角度画像差し替え','image',destination.id,category+' '+finalAngle+(decision.manualOverride?'（目視優先）':decision.moved?'（自動補正）':''));
     }else{
       const obj={
         id:uid('img'),
@@ -782,11 +785,11 @@ angleSlotModal=async function(memberId,category,angle,imageId=''){
         deletedAt:null
       };
       await put('images',obj);
-      await log('角度画像追加','image',obj.id,category+' '+finalAngle+(decision.moved?'（自動補正）':''));
+      await log('角度画像追加','image',obj.id,category+' '+finalAngle+(decision.manualOverride?'（目視優先）':decision.moved?'（自動補正）':''));
     }
 
     closeModal();
-    toast(decision.moved?'自動判定した '+finalAngle+' に登録しました':finalAngle+' の画像を保存しました');
+    toast(decision.manualOverride?'目視確認を優先して '+finalAngle+' に登録しました':decision.moved?'自動判定した '+finalAngle+' に登録しました':finalAngle+' の画像を保存しました');
     renderMemberDetail(memberId);
   };
 };
