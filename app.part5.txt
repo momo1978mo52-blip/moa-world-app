@@ -1,15 +1,15 @@
 
 // ---- Existing Moa World data migration / profile-progress enhancement ----
-const WORLD_SEED_VERSION='2026-09-27-water-delivery';
+const WORLD_SEED_VERSION='2026-09-27-all-confirmed-profiles';
 const WORLD_MEMBERS=[
-{name:'萌愛',kana:'もあ',age:23,job:'造園業・リーダー',affiliation:'造園会社',status:'確定',favorite:true,tags:'主役・中心人物・スポーツ',personality:'適当・出たとこ勝負に見えるが、最後はやり切る。',hobbies:'器械体操・空手・テコンドー・ブレイクダンス',memo:'身長158cm。自然な色白。喫煙。左前腕に「YOLO, be kind…」＋上下黒ハートのタトゥー。ピアス／リング3／右足首アンクレット。体型基準あり。',faceProgress:8,bodyProgress:1,posterStatus:'複数あり'},
+{name:'萌愛',kana:'もあ',age:24,job:'造園業・リーダー',affiliation:'造園会社',status:'確定',favorite:true,tags:'主役・中心人物・スポーツ',personality:'適当・出たとこ勝負に見えるが、最後はやり切る。',hobbies:'器械体操・空手・テコンドー・ブレイクダンス',memo:'身長158cm。自然な色白。喫煙。左前腕に「YOLO, be kind…」＋上下黒ハートのタトゥー。ピアス／リング3／右足首アンクレット。体型基準あり。',faceProgress:8,bodyProgress:1,posterStatus:'複数あり'},
 {name:'一華',kana:'いちか',age:24,job:'介護職',affiliation:'',status:'確定',favorite:false,tags:'姉妹・柔道',personality:'いじられムードメーカー。',hobbies:'柔道',memo:'一葉の実姉。年子姉妹。身長155cm。左胸上に「Live Your own way」のタトゥー。',posterStatus:'未確認'},
 {name:'一葉',kana:'かずは',age:23,job:'市役所・スポーツ振興',affiliation:'市役所',status:'確定',favorite:false,tags:'行政・空手・同級生',personality:'',hobbies:'空手',memo:'一華の実妹。萌愛・凛と同級生。萌愛とは同じ小学校・同じ空手道場。右目尻付近に小さなホクロ。',faceProgress:6,posterStatus:'未確認'},
 {name:'帆香',kana:'ほのか',age:30,job:'美容室オーナー',affiliation:'美容室',status:'確定',favorite:false,tags:'美容室・オーナー',personality:'頼られる立場。最後の砦。',hobbies:'',memo:'美容室オーナー。柚凪・愛莉・芽衣らの仕事側の中心人物。',posterStatus:'修正推奨'},
 {name:'柚凪',kana:'ゆずな',age:23,job:'美容師',affiliation:'帆香の美容室',status:'確定',favorite:false,tags:'美容室',personality:'仕事人間寄り。帆香に認められたい。',hobbies:'',memo:'ヘアスタイリスト。顔8方向完成。',faceProgress:8,posterStatus:'あり'},
 {name:'愛莉',kana:'あいり',age:25,job:'美容師',affiliation:'帆香の美容室',status:'確定',favorite:false,tags:'美容室・スタイリスト',personality:'',hobbies:'',memo:'専門学校卒業後から帆香の店で勤務。美容師歴約5年。スタイリスト兼後輩指導係。',posterStatus:'完成'},
 {name:'芽衣',kana:'めい',age:23,job:'キッズルーム',affiliation:'美容室併設キッズルーム',status:'確定',favorite:false,tags:'美容室・キッズルーム',personality:'',hobbies:'',memo:'美容室併設キッズルーム。資格取得を目標にしている設定。',posterStatus:'未確認'},
-{name:'彩加',kana:'あやか',age:24,job:'キッズルーム',affiliation:'',status:'確定',favorite:false,tags:'子ども・接客',personality:'',hobbies:'',memo:'体型8方向の制作進行あり。',bodyProgress:3,posterStatus:'制作中'},
+{name:'彩加',kana:'あやか',age:24,job:'キッズルーム保育士',affiliation:'キッズルーム',status:'確定',favorite:false,tags:'子ども・保育',personality:'',hobbies:'',memo:'体型8方向の制作進行あり。',bodyProgress:3,posterStatus:'制作中'},
 {name:'真里愛',kana:'まりあ',age:25,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル・白ギャル',personality:'荒れていた過去があり、家庭環境の影響を受けている。',hobbies:'',memo:'白ギャル系。ネイルサロン勤務。',posterStatus:'未確認'},
 {name:'絢奈',kana:'あやな',age:24,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル',personality:'',hobbies:'',memo:'真里愛と同じネイルサロン勤務。顔8方向完成。体型8方向を制作中。',faceProgress:8,bodyProgress:1,posterStatus:'完成'},
 {name:'未姫',kana:'みき',age:25,job:'ネイリスト',affiliation:'ネイルサロン',status:'確定',favorite:false,tags:'ネイル',personality:'',hobbies:'',memo:'顔8方向を進行中。右90°は修正対象。',faceProgress:6,bodyProgress:1,posterStatus:'未確認'},
@@ -18,7 +18,7 @@ const WORLD_MEMBERS=[
 {name:'優愛',kana:'ゆあ',age:24,job:'医療事務・外来受付',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療',personality:'',hobbies:'',memo:'莉央と同じ病院の医療事務・外来受付。顔は正面0°・左前45°まで完了。',faceProgress:2,posterStatus:'未確認'},
 {name:'美香',kana:'みか',age:25,job:'歯科衛生士',affiliation:'歯科',status:'確定',favorite:false,tags:'医療・歯科',personality:'',hobbies:'',memo:'医療系メンバー。',posterStatus:'未確認'},
 {name:'結菜',kana:'ゆいな',age:25,job:'管理栄養士',affiliation:'NST',status:'確定',favorite:false,tags:'医療・NST',personality:'ピュアで真面目。箱入り娘タイプ。',hobbies:'',memo:'管理栄養士。NST。',posterStatus:'未確認'},
-{name:'陽菜',kana:'ひな',age:25,job:'薬剤師',affiliation:'NST',status:'確定',favorite:false,tags:'医療・NST',personality:'',hobbies:'',memo:'薬剤師。NST。',posterStatus:'未確認'},
+{name:'陽菜',kana:'ひな',age:25,job:'薬剤師',affiliation:'地域の調剤薬局',status:'確定',favorite:false,tags:'医療・薬局',personality:'',hobbies:'',memo:'地域の調剤薬局勤務。病院勤務ではない。',posterStatus:'未確認'},
 {name:'日和',kana:'ひより',age:27,job:'看護師',affiliation:'',status:'確定',favorite:false,tags:'医療',personality:'',hobbies:'',memo:'看護師。咲愛の生活面の導線にも関わる。',posterStatus:'未確認'},
 {name:'凛',kana:'りん',age:23,job:'市役所・子育て支援',affiliation:'市役所',status:'確定',favorite:false,tags:'行政・同級生',personality:'静かに強い一言を言うタイプ。',hobbies:'',memo:'萌愛・一葉と同級生。子育て支援／相談窓口。',posterStatus:'未確認'},
 {name:'心桜',kana:'みお',age:23,job:'地域子育て支援センター',affiliation:'地域子育て支援センター',status:'確定',favorite:false,tags:'子育て支援・シングルマザー・同級生',personality:'',hobbies:'',memo:'結婚・離婚経験あり。娘と福岡から茨城へ戻った。萌愛と同級生。',posterStatus:'完成'},
@@ -47,7 +47,7 @@ const WORLD_MEMBERS=[
 {name:'留愛',kana:'るあ',age:20,job:'大学生・社会学',affiliation:'大学',status:'確定',favorite:false,tags:'大学生・社会学',personality:'',hobbies:'',memo:'社会学。',posterStatus:'未確認'},
 {name:'陽子',kana:'ようこ',age:28,job:'カメラマン',affiliation:'',status:'確定',favorite:false,tags:'カメラ・地域',personality:'',hobbies:'',memo:'街並みや店舗で働く人を撮影し、地域発信に関わる。',posterStatus:'未確認'},
 {name:'琉唯',kana:'るい',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'ギャル・職業未整理',personality:'美人・綺麗寄り。少しキツそうに見えるが芯が強く、本質は真面目。',hobbies:'',memo:'人物作成済み。職業は未整理。ギャル女性の中でも好み上位。',posterStatus:'未確認'},
-{name:'優希',kana:'ゆうき',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'職業未整理',personality:'',hobbies:'',memo:'人物作成済み。顔角度8方向が2セット完了。',faceProgress:8,posterStatus:'未確認'},
+{name:'優希',kana:'ゆうき',age:22,job:'歯科助手',affiliation:'歯科クリニック',status:'確定',favorite:false,tags:'医療・歯科',personality:'',hobbies:'',memo:'歯科助手。顔角度8方向が2セット完了。',faceProgress:8,posterStatus:'未確認'},
 {name:'望愛',kana:'のあ',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'職業未整理',personality:'',hobbies:'',memo:'人物作成済み。正面0°あり。体型設定 159cm/49kg、B89-W61-H88、E70。',faceProgress:1,bodyProgress:1,posterStatus:'未確認'},
 {name:'莉亜那',kana:'りあな',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'職業未整理・体型測定',personality:'',hobbies:'',memo:'体型測定進行。指示E70、見た目E70〜小F70。F70正式は未確定。二の腕・太腿は細め補正。',bodyProgress:1,posterStatus:'未確認'},
 {name:'美梨彩',kana:'みりさ',age:null,job:'ビューティーアドバイザー',affiliation:'',status:'候補',favorite:false,tags:'美容・BA',personality:'',hobbies:'',memo:'BA（ビューティーアドバイザー）。年齢は未確定。',posterStatus:'未確認'},
@@ -58,7 +58,29 @@ const WORLD_MEMBERS=[
 {name:'恋海',kana:'れみ',age:26,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送',personality:'',hobbies:'',memo:'聡恵と同級生。早朝コンビニ時代の祥奈と、毎朝ブラックコーヒーを買う常連客として知り合った。配送先での会話も多い配送組。',posterStatus:'未確認'},
 {name:'聡恵',kana:'さとえ',age:26,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送',personality:'',hobbies:'',memo:'恋海と同級生。早朝コンビニ時代の祥奈と、毎朝ブラックコーヒーを買う常連客として知り合った。配送先での会話も多い配送組。',posterStatus:'未確認'},
 {name:'希乃花',kana:'ののか',age:25,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送',personality:'',hobbies:'',memo:'鮮魚店側の候補から配送組へ変更。市場の鮮魚卸・配送会社で配達を担当。',posterStatus:'未確認'},
-{name:'祥奈',kana:'あきな',age:25,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送・元コンビニ',personality:'',hobbies:'',memo:'元・早朝コンビニ店員。毎朝ブラックコーヒーを買いに来ていた恋海・聡恵との会話をきっかけに市場の配送会社へ転職。現在は配送組の新人ポジション。',posterStatus:'未確認'}
+{name:'祥奈',kana:'あきな',age:25,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送・元コンビニ',personality:'',hobbies:'',memo:'元・早朝コンビニ店員。毎朝ブラックコーヒーを買いに来ていた恋海・聡恵との会話をきっかけに市場の配送会社へ転職。現在は配送組の新人ポジション。',posterStatus:'未確認'},
+{name:'綾那',kana:'あやな',age:26,job:'ブライダルエステ',affiliation:'ブライダルエステ',status:'確定',favorite:false,tags:'美容・ブライダル',personality:'',hobbies:'',memo:'ブライダルエステ担当。',posterStatus:'未確認'},
+{name:'晶穂',kana:'あきほ',age:25,job:'食品サンプル会社社長兼職人',affiliation:'食品サンプル会社',status:'確定',favorite:false,tags:'食品サンプル・経営者・職人',personality:'制作前に実物を徹底観察する現場主義。',hobbies:'',memo:'会社の社長兼オーナー。野菜・魚介・肉などの生産地や流通現場、厨房まで観察して制作に反映する。',faceProgress:8,posterStatus:'未確認'},
+{name:'美奈代',kana:'みなよ',age:25,job:'蔵元・酒屋',affiliation:'藤川家の蔵元・酒屋',status:'確定',favorite:false,tags:'酒屋・蔵元・姉妹',personality:'',hobbies:'',memo:'藤川家長女。愛唯菜の姉。',posterStatus:'未確認'},
+{name:'愛唯菜',kana:'めいな',age:22,job:'花屋',affiliation:'花屋',status:'確定',favorite:false,tags:'花屋・姉妹',personality:'',hobbies:'',memo:'藤川家次女。美奈代の妹。花屋勤務。',posterStatus:'未確認'},
+{name:'美憂',kana:'みゆ',age:24,job:'花屋',affiliation:'花屋',status:'確定',favorite:false,tags:'花屋',personality:'',hobbies:'',memo:'花屋スタッフ。',posterStatus:'未確認'},
+{name:'育美',kana:'いくみ',age:22,job:'花屋',affiliation:'花屋',status:'確定',favorite:false,tags:'花屋',personality:'',hobbies:'',memo:'愛称はいくみん。花屋スタッフ。',posterStatus:'未確認'},
+{name:'花流',kana:'はる',age:23,job:'花屋',affiliation:'花屋',status:'確定',favorite:false,tags:'花屋',personality:'',hobbies:'',memo:'花屋スタッフ。',posterStatus:'未確認'},
+{name:'彩絵',kana:'さえ',age:28,job:'フラワーアーティスト／フローリスト',affiliation:'花屋',status:'確定',favorite:false,tags:'花屋・大型装花・ブライダル',personality:'型にはまらない感性と独自の世界観を持つ。',hobbies:'',memo:'大型イベント・大ホール・ブライダル会場などの大型装花と空間演出を担当。',faceProgress:8,posterStatus:'未確認'},
+{name:'香奈実',kana:'かなみ',age:23,job:'クリーニング店勤務・居酒屋手伝い',affiliation:'昼：クリーニング店／夜：両親の居酒屋',status:'確定',favorite:false,tags:'クリーニング・居酒屋・看板娘',personality:'',hobbies:'',memo:'昼は9:00〜14:00にクリーニング店勤務。夜は両親の居酒屋を手伝う。',posterStatus:'未確認'},
+{name:'美織奈',kana:'みおな',age:25,job:'鮮魚店',affiliation:'水産市場・鮮魚店',status:'確定',favorite:false,tags:'水産市場・鮮魚店',personality:'',hobbies:'',memo:'市場の鮮魚店の娘。少し派手めの令和美人。',posterStatus:'未確認'},
+{name:'亜美',kana:'あみ',age:24,job:'八百屋',affiliation:'八百屋',status:'確定',favorite:false,tags:'市場・青果・八百屋',personality:'',hobbies:'',memo:'八百屋の娘。日常感を重視した人物設定。',posterStatus:'未確認'},
+{name:'紗知江',kana:'さちえ',age:25,job:'精肉店',affiliation:'鈴木精肉店',status:'確定',favorite:false,tags:'精肉店・市場',personality:'',hobbies:'',memo:'鈴木精肉店の娘。美織奈・希乃花と同世代。',posterStatus:'未確認'},
+{name:'望実',kana:'のぞみ',age:25,job:'診療放射線技師',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療・病院・画像診断',personality:'',hobbies:'',memo:'レントゲン・CT・MRIなど画像診断部門。',posterStatus:'未確認'},
+{name:'渚佐',kana:'なぎさ',age:27,job:'臨床検査技師',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療・病院・検査',personality:'',hobbies:'',memo:'検体検査・血液／尿検査・心電図・エコーなどに関わる。',posterStatus:'未確認'},
+{name:'柚伎',kana:'ゆずき',age:24,job:'理学療法士（PT）',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療・病院・リハビリ',personality:'',hobbies:'',memo:'リハビリ部門の理学療法士。',posterStatus:'未確認'},
+{name:'一稀',kana:'かずき',age:23,job:'看護師・救急外来',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療・病院・救急',personality:'',hobbies:'',memo:'救急外来の看護師。',posterStatus:'未確認'},
+{name:'茉梨沙',kana:'まりさ',age:29,job:'医療ソーシャルワーカー（MSW）',affiliation:'莉央と同じ病院',status:'確定',favorite:false,tags:'医療・病院・地域連携',personality:'',hobbies:'',memo:'退院支援、介護施設との連携、家族相談、福祉制度の調整を担当。',posterStatus:'未確認'},
+{name:'鈴苗',kana:'すずな',age:24,job:'鮮魚店・仕入れ／食品管理',affiliation:'魚屋「湊」',status:'確定',favorite:false,tags:'水産市場・魚屋湊',personality:'',hobbies:'',memo:'魚屋「湊」で仕入れ・食品管理を担当。',posterStatus:'未確認'},
+{name:'愛織',kana:'まおり',age:23,job:'鮮魚店・惣菜／海鮮丼',affiliation:'魚屋「湊」',status:'確定',favorite:false,tags:'水産市場・魚屋湊',personality:'',hobbies:'',memo:'魚屋「湊」で惣菜・海鮮丼を担当。',posterStatus:'未確認'},
+{name:'紗英子',kana:'さえこ',age:25,job:'鮮魚店・店頭／接客',affiliation:'魚屋「湊」',status:'確定',favorite:false,tags:'水産市場・魚屋湊',personality:'',hobbies:'',memo:'魚屋「湊」で店頭・接客を担当。',posterStatus:'未確認'},
+{name:'麻貴',kana:'まき',age:27,job:'鮮魚店・鮮魚加工／刺身',affiliation:'魚屋「湊」',status:'確定',favorite:false,tags:'水産市場・魚屋湊',personality:'',hobbies:'',memo:'魚屋「湊」で鮮魚加工・刺身を担当。',posterStatus:'未確認'},
+{name:'ソヒョン',kana:'서현',age:22,job:'大学生（韓国からの留学生）',affiliation:'茂逢大学',status:'確定',favorite:false,tags:'大学生・留学生・韓国',personality:'',hobbies:'',memo:'ソウル出身。茂逢市の大学へ留学中。',posterStatus:'未確認'}
 ];
 const WORLD_RELATIONS=[
 {k:'ichika-kazuha',a:'一華',b:'一葉',tags:['家族','姉妹'],aToB:'姉',bToA:'妹',memo:'年子の実姉妹。'},
