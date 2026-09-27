@@ -112,3 +112,10 @@ h1{font-size:23px;margin:2px 0 0;font-weight:800}
 .angle-auto-box span{font-size:11px;color:#8f887b}
 .angle-auto-box b{margin-left:auto;color:var(--gold2);font-size:13px}
 .angle-auto-box .ghost-btn{margin-left:4px}
+
+/* profile progress quick links */
+.profile-jump-row{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:rgba(216,191,121,.14);margin:0 -6px;padding-left:6px;padding-right:6px;border-radius:10px;transition:background .15s ease,transform .08s ease}
+.profile-jump-row:active{background:#17150f;transform:scale(.995)}
+.profile-jump-row:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+.profile-jump-value{display:flex;align-items:center;gap:10px}
+.profile-jump-arrow{color:var(--gold);font-size:22px;line-height:1;font-weight:500}
