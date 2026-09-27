@@ -1,6 +1,6 @@
 
 // ---- Existing Moa World data migration / profile-progress enhancement ----
-const WORLD_SEED_VERSION='2026-09-17a';
+const WORLD_SEED_VERSION='2026-09-27-water-delivery';
 const WORLD_MEMBERS=[
 {name:'萌愛',kana:'もあ',age:23,job:'造園業・リーダー',affiliation:'造園会社',status:'確定',favorite:true,tags:'主役・中心人物・スポーツ',personality:'適当・出たとこ勝負に見えるが、最後はやり切る。',hobbies:'器械体操・空手・テコンドー・ブレイクダンス',memo:'身長158cm。自然な色白。喫煙。左前腕に「YOLO, be kind…」＋上下黒ハートのタトゥー。ピアス／リング3／右足首アンクレット。体型基準あり。',faceProgress:8,bodyProgress:1,posterStatus:'複数あり'},
 {name:'一華',kana:'いちか',age:24,job:'介護職',affiliation:'',status:'確定',favorite:false,tags:'姉妹・柔道',personality:'いじられムードメーカー。',hobbies:'柔道',memo:'一葉の実姉。年子姉妹。身長155cm。左胸上に「Live Your own way」のタトゥー。',posterStatus:'未確認'},
@@ -54,7 +54,11 @@ const WORLD_MEMBERS=[
 {name:'茜',kana:'あかね',age:null,job:'',affiliation:'',status:'候補',favorite:false,tags:'大食い',personality:'',hobbies:'大食い',memo:'大食いキャラ。職業・年齢は未確定。',posterStatus:'未確認'},
 {name:'成美',kana:'なるみ',age:23,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・フェイシャル・肌管理',personality:'',hobbies:'',memo:'フェイシャル／肌管理担当。',posterStatus:'未確認'},
 {name:'絹世',kana:'きぬよ',age:25,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・痩身・ボディメイク',personality:'',hobbies:'',memo:'痩身／ボディメイク担当。',posterStatus:'未確認'},
-{name:'有子',kana:'ゆうこ',age:24,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・脱毛・美容ケア',personality:'',hobbies:'',memo:'脱毛／美容ケア担当。',posterStatus:'未確認'}
+{name:'有子',kana:'ゆうこ',age:24,job:'エステティシャン',affiliation:'エステサロン',status:'確定',favorite:false,tags:'エステ・脱毛・美容ケア',personality:'',hobbies:'',memo:'脱毛／美容ケア担当。',posterStatus:'未確認'},
+{name:'恋海',kana:'れみ',age:26,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送',personality:'',hobbies:'',memo:'聡恵と同級生。早朝コンビニ時代の祥奈と、毎朝ブラックコーヒーを買う常連客として知り合った。配送先での会話も多い配送組。',posterStatus:'未確認'},
+{name:'聡恵',kana:'さとえ',age:26,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送',personality:'',hobbies:'',memo:'恋海と同級生。早朝コンビニ時代の祥奈と、毎朝ブラックコーヒーを買う常連客として知り合った。配送先での会話も多い配送組。',posterStatus:'未確認'},
+{name:'希乃花',kana:'ののか',age:25,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送',personality:'',hobbies:'',memo:'鮮魚店側の候補から配送組へ変更。市場の鮮魚卸・配送会社で配達を担当。',posterStatus:'未確認'},
+{name:'祥奈',kana:'あきな',age:25,job:'鮮魚卸・配送',affiliation:'鮮魚卸・配送会社',status:'確定',favorite:false,tags:'水産市場・配送・元コンビニ',personality:'',hobbies:'',memo:'元・早朝コンビニ店員。毎朝ブラックコーヒーを買いに来ていた恋海・聡恵との会話をきっかけに市場の配送会社へ転職。現在は配送組の新人ポジション。',posterStatus:'未確認'}
 ];
 const WORLD_RELATIONS=[
 {k:'ichika-kazuha',a:'一華',b:'一葉',tags:['家族','姉妹'],aToB:'姉',bToA:'妹',memo:'年子の実姉妹。'},
