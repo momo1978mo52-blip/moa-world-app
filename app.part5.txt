@@ -116,7 +116,58 @@ memberTabHtml=function(m,images,relations,schedules,prod){
   if(state.memberTab==='profile'){
     const fp=Number.isFinite(m.faceProgress)?`${m.faceProgress}/8`:'未確認';
     const bp=Number.isFinite(m.bodyProgress)?`${m.bodyProgress}/8`:'未確認';
-    return `<div class="card"><div class="setting-row"><span>ステータス</span><b>${esc(m.status||'候補')}</b></div><div class="setting-row"><span>職業</span><span class="muted">${esc(m.job||'未設定')}</span></div><div class="setting-row"><span>所属</span><span class="muted">${esc(m.affiliation||'未設定')}</span></div><div class="setting-row"><span>タグ</span><span class="muted">${esc(m.tags||'未設定')}</span></div><div class="setting-row"><span>性格</span><span class="muted">${esc(m.personality||'未設定')}</span></div><div class="setting-row"><span>趣味</span><span class="muted">${esc(m.hobbies||'未設定')}</span></div><div class="setting-row"><span>メモ</span><span class="muted">${esc(m.memo||'未設定')}</span></div></div><div class="card"><b>移行済み制作記録</b><div class="setting-row profile-jump-row" data-profile-jump="face" role="button" tabindex="0" aria-label="顔8方向の管理画面を開く"><span>顔8方向</span><span class="profile-jump-value">${fp}<b class="profile-jump-arrow">›</b></span></div><div class="setting-row profile-jump-row" data-profile-jump="body" role="button" tabindex="0" aria-label="体型8方向の管理画面を開く"><span>体型8方向</span><span class="profile-jump-value">${bp}<b class="profile-jump-arrow">›</b></span></div><div class="setting-row profile-jump-row" data-profile-jump="poster" role="button" tabindex="0" aria-label="ポスター管理画面を開く"><span>ポスター</span><span class="profile-jump-value">${esc(m.posterStatus||'未確認')}<b class="profile-jump-arrow">›</b></span></div><div class="tiny muted">※ここは過去の進行記録。画像本体は端末に登録した分だけギャラリーに表示されます。</div></div>`;
+    const pv=v=>v?esc(v):'未設定';
+    const size=(label,value)=>`<div class="profile-size-item"><small>${esc(label)}</small><b>${pv(value)}</b></div>`;
+    return `
+      <div class="card">
+        <div class="profile-card-title">基本プロフィール</div>
+        <div class="setting-row"><span>ステータス</span><b>${esc(m.status||'候補')}</b></div>
+        <div class="setting-row"><span>職業</span><span class="muted">${pv(m.job)}</span></div>
+        <div class="setting-row"><span>所属</span><span class="muted">${pv(m.affiliation)}</span></div>
+        <div class="setting-row"><span>タグ</span><span class="muted">${pv(m.tags)}</span></div>
+        <div class="setting-row"><span>性格</span><span class="muted">${pv(m.personality)}</span></div>
+        <div class="setting-row"><span>趣味</span><span class="muted">${pv(m.hobbies)}</span></div>
+      </div>
+
+      <div class="card">
+        <div class="profile-card-title">本人固定・外見</div>
+        <div class="setting-row profile-detail-row"><span>顔の特徴</span><span class="muted">${pv(m.faceFeatures)}</span></div>
+        <div class="setting-row profile-detail-row"><span>髪型・髪色</span><span class="muted">${pv(m.hairFeatures)}</span></div>
+        <div class="setting-row profile-detail-row"><span>肌・肌色</span><span class="muted">${pv(m.skinFeatures)}</span></div>
+        <div class="setting-row profile-detail-row"><span>アクセサリー</span><span class="muted">${pv(m.accessories)}</span></div>
+        <div class="setting-row profile-detail-row"><span>タトゥー・傷・ほくろ等</span><span class="muted">${pv(m.marks)}</span></div>
+      </div>
+
+      <div class="card">
+        <div class="profile-card-title">体型サイズ</div>
+        <div class="profile-size-grid">
+          ${size('身長',m.height)}${size('体重',m.weight)}
+          ${size('B バスト',m.bust)}${size('カップ目安',m.cup)}
+          ${size('W ウエスト',m.waist)}${size('H ヒップ',m.hip)}
+        </div>
+        <div class="profile-card-subtitle">見た目の特徴</div>
+        <div class="setting-row profile-detail-row"><span>全体体型</span><span class="muted">${pv(m.bodyType)}</span></div>
+        <div class="setting-row profile-detail-row"><span>肩幅</span><span class="muted">${pv(m.shoulder)}</span></div>
+        <div class="setting-row profile-detail-row"><span>骨盤・ヒップ</span><span class="muted">${pv(m.pelvisHip)}</span></div>
+        <div class="setting-row profile-detail-row"><span>太もも</span><span class="muted">${pv(m.thigh)}</span></div>
+        <div class="setting-row profile-detail-row"><span>ふくらはぎ</span><span class="muted">${pv(m.calf)}</span></div>
+        <div class="setting-row profile-detail-row"><span>足首</span><span class="muted">${pv(m.ankle)}</span></div>
+        <div class="setting-row profile-detail-row"><span>脚の長さ</span><span class="muted">${pv(m.legLength)}</span></div>
+        <div class="setting-row profile-detail-row"><span>生成時の体型注意</span><span class="muted">${pv(m.bodyFeatures)}</span></div>
+        <div class="tiny muted profile-help">数値と見た目の両方を保存するので、集合写真でも人物ごとの体型差を確認しやすくなります。</div>
+      </div>
+
+      <div class="card">
+        <div class="profile-card-title">メモ・個別注意</div>
+        <div class="profile-memo">${pv(m.memo)}</div>
+      </div>
+
+      <div class="card"><b>移行済み制作記録</b>
+        <div class="setting-row profile-jump-row" data-profile-jump="face" role="button" tabindex="0" aria-label="顔8方向の管理画面を開く"><span>顔8方向</span><span class="profile-jump-value">${fp}<b class="profile-jump-arrow">›</b></span></div>
+        <div class="setting-row profile-jump-row" data-profile-jump="body" role="button" tabindex="0" aria-label="体型8方向の管理画面を開く"><span>体型8方向</span><span class="profile-jump-value">${bp}<b class="profile-jump-arrow">›</b></span></div>
+        <div class="setting-row profile-jump-row" data-profile-jump="poster" role="button" tabindex="0" aria-label="ポスター管理画面を開く"><span>ポスター</span><span class="profile-jump-value">${esc(m.posterStatus||'未確認')}<b class="profile-jump-arrow">›</b></span></div>
+        <div class="tiny muted">※ここは過去の進行記録。画像本体は端末に登録した分だけギャラリーに表示されます。</div>
+      </div>`;
   }
   if(state.memberTab==='gallery'){
     const faceActual=images.filter(i=>i.category==='顔8方向').length,bodyActual=images.filter(i=>i.category==='体型8方向').length;
