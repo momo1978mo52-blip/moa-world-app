@@ -11,8 +11,89 @@ function openAction(action){if(action==='member-add')return memberModal();if(act
 function showModal(title,body){modalRoot.innerHTML=`<div class="modal-backdrop"><section class="modal"><div class="modal-head"><h2>${esc(title)}</h2><button class="modal-close" aria-label="閉じる">×</button></div>${body}</section></div>`;modalRoot.querySelector('.modal-close').onclick=closeModal;modalRoot.querySelector('.modal-backdrop').addEventListener('click',e=>{if(e.target.classList.contains('modal-backdrop'))closeModal()})}
 function closeModal(){modalRoot.innerHTML=''}
 
-async function memberModal(id=null){const m=id?await getOne('members',id):null;showModal(id?'メンバー編集':'新規メンバー',`<form id="memberForm" class="form"><div class="field-row"><div class="field"><label>名前 *</label><input name="name" required value="${esc(m?.name||'')}"></div><div class="field"><label>かな</label><input name="kana" value="${esc(m?.kana||'')}"></div></div><div class="field-row"><div class="field"><label>年齢</label><input name="age" type="number" min="18" value="${esc(m?.age||'')}"></div><div class="field"><label>ステータス</label><select name="status"><option ${m?.status==='確定'?'selected':''}>確定</option><option ${m?.status==='候補'?'selected':''}>候補</option></select></div></div><div class="field"><label>職業</label><input name="job" value="${esc(m?.job||'')}"></div><div class="field"><label>所属</label><input name="affiliation" value="${esc(m?.affiliation||'')}"></div><div class="field"><label>タグ</label><input name="tags" value="${esc(m?.tags||'')}"></div><div class="field"><label>性格</label><textarea name="personality">${esc(m?.personality||'')}</textarea></div><div class="field"><label>趣味</label><input name="hobbies" value="${esc(m?.hobbies||'')}"></div><div class="field"><label>メモ</label><textarea name="memo">${esc(m?.memo||'')}</textarea></div><label class="row"><input type="checkbox" name="favorite" ${m?.favorite?'checked':''}> 重要・お気に入り</label><button class="gold-btn" type="submit">保存</button>${id?`<button class="danger-btn" type="button" id="softDeleteMember">ゴミ箱へ</button>`:''}</form>`);
-  document.getElementById('memberForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const obj={...(m||{}),id:m?.id||uid('mem'),name:f.get('name'),kana:f.get('kana'),age:Number(f.get('age'))||null,status:f.get('status'),job:f.get('job'),affiliation:f.get('affiliation'),tags:f.get('tags'),personality:f.get('personality'),hobbies:f.get('hobbies'),memo:f.get('memo'),favorite:f.get('favorite')==='on',createdAt:m?.createdAt||now(),updatedAt:now(),deletedAt:null};await put('members',obj);await log(id?'編集':'追加','member',obj.id,`${obj.name}を${id?'編集':'追加'}`);closeModal();toast('保存しました');state.memberId=id?obj.id:null;render()};
+async function memberModal(id=null){
+  const m=id?await getOne('members',id):null;
+  showModal(id?'メンバー編集':'新規メンバー',`<form id="memberForm" class="form">
+    <div class="form-section-title">基本情報</div>
+    <div class="field-row">
+      <div class="field"><label>名前 *</label><input name="name" required value="${esc(m?.name||'')}"></div>
+      <div class="field"><label>かな</label><input name="kana" value="${esc(m?.kana||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>年齢</label><input name="age" type="number" min="18" value="${esc(m?.age||'')}"></div>
+      <div class="field"><label>ステータス</label><select name="status"><option ${m?.status==='確定'?'selected':''}>確定</option><option ${m?.status==='候補'?'selected':''}>候補</option></select></div>
+    </div>
+    <div class="field"><label>職業</label><input name="job" value="${esc(m?.job||'')}"></div>
+    <div class="field"><label>所属</label><input name="affiliation" value="${esc(m?.affiliation||'')}"></div>
+    <div class="field"><label>タグ</label><input name="tags" value="${esc(m?.tags||'')}"></div>
+    <div class="field"><label>性格</label><textarea name="personality">${esc(m?.personality||'')}</textarea></div>
+    <div class="field"><label>趣味</label><input name="hobbies" value="${esc(m?.hobbies||'')}"></div>
+
+    <div class="form-section-title">本人固定・外見</div>
+    <div class="field"><label>顔の特徴</label><textarea name="faceFeatures" placeholder="目・眉・鼻・唇・輪郭など">${esc(m?.faceFeatures||'')}</textarea></div>
+    <div class="field-row">
+      <div class="field"><label>髪型・髪色</label><input name="hairFeatures" value="${esc(m?.hairFeatures||'')}"></div>
+      <div class="field"><label>肌・肌色</label><input name="skinFeatures" value="${esc(m?.skinFeatures||'')}"></div>
+    </div>
+    <div class="field"><label>アクセサリー</label><input name="accessories" value="${esc(m?.accessories||'')}"></div>
+    <div class="field"><label>タトゥー・傷・ほくろ等</label><textarea name="marks">${esc(m?.marks||'')}</textarea></div>
+
+    <div class="form-section-title">体型サイズ</div>
+    <div class="field-row">
+      <div class="field"><label>身長</label><input name="height" placeholder="例 158cm" value="${esc(m?.height||'')}"></div>
+      <div class="field"><label>体重</label><input name="weight" placeholder="例 48kg / 非公開" value="${esc(m?.weight||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>バスト B</label><input name="bust" placeholder="例 89cm" value="${esc(m?.bust||'')}"></div>
+      <div class="field"><label>カップ目安</label><input name="cup" placeholder="例 D〜E / E70" value="${esc(m?.cup||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>ウエスト W</label><input name="waist" placeholder="例 61cm" value="${esc(m?.waist||'')}"></div>
+      <div class="field"><label>ヒップ H</label><input name="hip" placeholder="例 88cm" value="${esc(m?.hip||'')}"></div>
+    </div>
+
+    <div class="form-section-title">体型の見た目</div>
+    <div class="field"><label>全体体型</label><input name="bodyType" placeholder="華奢・細身・健康的・モデル体型など" value="${esc(m?.bodyType||'')}"></div>
+    <div class="field-row">
+      <div class="field"><label>肩幅</label><input name="shoulder" value="${esc(m?.shoulder||'')}"></div>
+      <div class="field"><label>骨盤・ヒップ</label><input name="pelvisHip" value="${esc(m?.pelvisHip||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>太もも</label><input name="thigh" value="${esc(m?.thigh||'')}"></div>
+      <div class="field"><label>ふくらはぎ</label><input name="calf" value="${esc(m?.calf||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>足首</label><input name="ankle" value="${esc(m?.ankle||'')}"></div>
+      <div class="field"><label>脚の長さ</label><input name="legLength" value="${esc(m?.legLength||'')}"></div>
+    </div>
+    <div class="field"><label>体型の特徴・生成時の注意</label><textarea name="bodyFeatures" placeholder="数値だけでは分からないシルエットや他人物との差">${esc(m?.bodyFeatures||'')}</textarea></div>
+
+    <div class="form-section-title">メモ・個別注意</div>
+    <div class="field"><label>メモ</label><textarea name="memo" placeholder="例外設定・経歴・画像生成で忘れたくないこと">${esc(m?.memo||'')}</textarea></div>
+
+    <label class="row"><input type="checkbox" name="favorite" ${m?.favorite?'checked':''}> 重要・お気に入り</label>
+    <button class="gold-btn" type="submit">保存</button>
+    ${id?`<button class="danger-btn" type="button" id="softDeleteMember">ゴミ箱へ</button>`:''}
+  </form>`);
+
+  document.getElementById('memberForm').onsubmit=async e=>{
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const obj={
+      ...(m||{}),
+      id:m?.id||uid('mem'),
+      name:f.get('name'),kana:f.get('kana'),age:Number(f.get('age'))||null,status:f.get('status'),
+      job:f.get('job'),affiliation:f.get('affiliation'),tags:f.get('tags'),personality:f.get('personality'),hobbies:f.get('hobbies'),
+      faceFeatures:f.get('faceFeatures'),hairFeatures:f.get('hairFeatures'),skinFeatures:f.get('skinFeatures'),accessories:f.get('accessories'),marks:f.get('marks'),
+      height:f.get('height'),weight:f.get('weight'),bust:f.get('bust'),cup:f.get('cup'),waist:f.get('waist'),hip:f.get('hip'),
+      bodyType:f.get('bodyType'),shoulder:f.get('shoulder'),pelvisHip:f.get('pelvisHip'),thigh:f.get('thigh'),calf:f.get('calf'),ankle:f.get('ankle'),legLength:f.get('legLength'),bodyFeatures:f.get('bodyFeatures'),
+      memo:f.get('memo'),favorite:f.get('favorite')==='on',
+      createdAt:m?.createdAt||now(),updatedAt:now(),deletedAt:null
+    };
+    await put('members',obj);
+    await log(id?'編集':'追加','member',obj.id,`${obj.name}を${id?'編集':'追加'}`);
+    closeModal();toast('保存しました');state.memberId=id?obj.id:null;render();
+  };
   if(id)document.getElementById('softDeleteMember').onclick=async()=>{const obj=await getOne('members',id);obj.deletedAt=now();await put('members',obj);await log('削除','member',id,`${obj.name}をゴミ箱へ移動`);closeModal();state.memberId=null;setView('members');toast('ゴミ箱へ移動しました')};
 }
 
