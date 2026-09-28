@@ -119,3 +119,19 @@ h1{font-size:23px;margin:2px 0 0;font-weight:800}
 .profile-jump-row:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
 .profile-jump-value{display:flex;align-items:center;gap:10px}
 .profile-jump-arrow{color:var(--gold);font-size:22px;line-height:1;font-weight:500}
+
+/* richer person profile / body-size fields */
+.form-section-title{margin:10px 0 0;padding:10px 2px 4px;border-top:1px solid #2d291f;color:var(--gold2);font-size:13px;font-weight:800;letter-spacing:.04em}
+.form-section-title:first-child{margin-top:0;border-top:0;padding-top:0}
+.profile-card-title{margin-bottom:8px;color:var(--gold2);font-size:15px;font-weight:800;letter-spacing:.02em}
+.profile-card-subtitle{margin:16px 0 4px;color:#d8d0bc;font-size:12px;font-weight:800}
+.profile-size-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.profile-size-item{min-width:0;padding:11px 12px;border:1px solid #302b20;border-radius:13px;background:#0d0d0c}
+.profile-size-item small{display:block;margin-bottom:5px;color:#8f887a;font-size:10px}
+.profile-size-item b{display:block;overflow-wrap:anywhere;color:#f0e7d4;font-size:14px}
+.profile-detail-row{align-items:flex-start}
+.profile-detail-row>span:first-child{flex:0 0 38%;max-width:38%}
+.profile-detail-row>span:last-child{text-align:right;white-space:pre-wrap;overflow-wrap:anywhere}
+.profile-memo{white-space:pre-wrap;overflow-wrap:anywhere;color:#c9c1b2;font-size:13px;line-height:1.7}
+.profile-help{margin-top:12px;line-height:1.6}
+@media (max-width:380px){.profile-size-grid{grid-template-columns:1fr}.profile-detail-row{display:grid;gap:5px}.profile-detail-row>span:first-child{max-width:none}.profile-detail-row>span:last-child{text-align:left}}
