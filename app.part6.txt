@@ -886,3 +886,223 @@ angleSlotModal=async function(memberId,category,angle,imageId=''){
     renderMemberDetail(memberId);
   };
 };
+
+
+// ---- Home world album / rotating memory card ----
+const MW_ALBUM_CATEGORY='ワールドアルバム';
+let mwAlbumLastCount=0;
+
+function mwAlbumItems(images=[]){
+  return images
+    .filter(i=>!i.deletedAt&&i.category===MW_ALBUM_CATEGORY&&i.dataUrl)
+    .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+}
+function mwAlbumIndex(total){
+  if(!total)return 0;
+  const n=Number(localStorage.getItem('moaWorldAlbumIndex')||0);
+  return Number.isFinite(n)?((n%total)+total)%total:0;
+}
+function mwAlbumSetIndex(index,total){
+  if(!total){localStorage.setItem('moaWorldAlbumIndex','0');return 0;}
+  const next=((index%total)+total)%total;
+  localStorage.setItem('moaWorldAlbumIndex',String(next));
+  return next;
+}
+function mwAlbumCaption(item){
+  const names=Array.isArray(item?.albumNames)?item.albumNames.filter(Boolean):[];
+  const scene=String(item?.albumScene||'').trim();
+  return (names.length?'左から：'+names.join('、'):'')+(names.length&&scene?'｜':'')+scene;
+}
+function mwAlbumAutoOn(){return localStorage.getItem('moaWorldAlbumAuto')!=='off';}
+function mwAlbumHeroHtml(albums){
+  mwAlbumLastCount=albums.length;
+  if(!albums.length){
+    return '<section class="mw-album-card mw-album-empty">'+
+      '<div class="mw-album-kicker">WORLD ALBUM</div>'+
+      '<h2>萌愛ちゃんワールド</h2>'+
+      '<p>みんなの顔と名前を覚えるためのワールドアルバム。季節・仕事・旅行・イベント・日常の一コマをここに残します。</p>'+
+      '<button type="button" class="gold-btn mw-album-empty-add" id="mwAlbumAdd">＋ 最初の写真を追加</button>'+
+    '</section>';
+  }
+  const index=mwAlbumIndex(albums.length);
+  const item=albums[index];
+  const caption=mwAlbumCaption(item)||'ワールドアルバム';
+  const dots=albums.slice(0,12).map((_,i)=>'<i class="'+(i===index?'active':'')+'"></i>').join('');
+  return '<section class="mw-album-card">'+
+    '<div class="mw-album-head">'+
+      '<div><div class="mw-album-kicker">WORLD ALBUM</div><h2>萌愛ちゃんワールド</h2></div>'+
+      '<button type="button" class="ghost-btn tiny" id="mwAlbumManage">アルバム '+albums.length+'枚</button>'+
+    '</div>'+
+    '<div class="mw-album-photo-wrap" id="mwAlbumSwipe">'+
+      '<img class="mw-album-photo" src="'+esc(item.dataUrl)+'" alt="'+esc(caption)+'">'+
+      (albums.length>1?'<button type="button" class="mw-album-arrow prev" id="mwAlbumPrev" aria-label="前の写真">‹</button><button type="button" class="mw-album-arrow next" id="mwAlbumNext" aria-label="次の写真">›</button>':'')+
+      (albums.length>1?'<div class="mw-album-dots">'+dots+(albums.length>12?'<span>+'+(albums.length-12)+'</span>':'')+'</div>':'')+
+    '</div>'+
+    '<div class="mw-album-caption">'+esc(caption)+'</div>'+
+    '<div class="mw-album-actions">'+
+      '<button type="button" class="ghost-btn tiny" id="mwAlbumAdd">＋ 写真追加</button>'+
+      '<button type="button" class="ghost-btn tiny" id="mwAlbumAuto">自動回転 '+(mwAlbumAutoOn()?'ON':'OFF')+'</button>'+
+    '</div>'+
+  '</section>';
+}
+function mwAlbumStep(delta){
+  if(mwAlbumLastCount<2)return;
+  mwAlbumSetIndex(mwAlbumIndex(mwAlbumLastCount)+delta,mwAlbumLastCount);
+  renderHome();
+}
+
+async function mwAlbumAddModal(){
+  showModal('ワールドアルバムに追加',
+    '<form id="mwAlbumForm" class="form">'+
+      '<div class="mw-album-form-note">ホームで顔と名前を確認できるよう、写真に写っている順番で人物名を入力します。</div>'+
+      '<div class="field"><label>写真 *</label><input name="file" type="file" accept="image/*" required></div>'+
+      '<div class="field"><label>左から人物名 *</label><input name="names" required placeholder="萌愛ちゃん、優愛ちゃん、美緒奈ちゃん、沙知絵ちゃん"></div>'+
+      '<div class="tiny muted">「、」またはカンマ区切り。写真に写っている左から順番に入力してください。</div>'+
+      '<div class="field"><label>場面 *</label><input name="scene" required placeholder="秋の果物狩り🍇"></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>種類</label><select name="type"><option>季節</option><option>イベント</option><option>仕事</option><option>旅行</option><option>日常</option><option>その他</option></select></div>'+
+        '<div class="field"><label>日付</label><input name="date" type="date" value="'+toDateKey(new Date())+'"></div>'+
+      '</div>'+
+      '<button class="gold-btn" type="submit">アルバムに保存</button>'+
+    '</form>'
+  );
+  document.getElementById('mwAlbumForm').onsubmit=async e=>{
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const names=String(f.get('names')||'').split(/[、,，\n]/).map(x=>x.trim()).filter(Boolean);
+    if(!names.length){toast('人物名を左から順に入力してください');return;}
+    const dataUrl=await fileToDataURL(f.get('file'));
+    const obj={
+      id:uid('img'),
+      memberId:'',
+      category:MW_ALBUM_CATEGORY,
+      angle:'',
+      status:'アルバム',
+      basis:'使用しない',
+      memo:'ワールドアルバム',
+      dataUrl,
+      albumNames:names,
+      albumScene:String(f.get('scene')||'').trim(),
+      albumType:String(f.get('type')||''),
+      albumDate:String(f.get('date')||''),
+      createdAt:now(),
+      updatedAt:now(),
+      deletedAt:null
+    };
+    await put('images',obj);
+    await log('ワールドアルバム追加','image',obj.id,mwAlbumCaption(obj));
+    localStorage.setItem('moaWorldAlbumIndex','0');
+    closeModal();
+    toast('ワールドアルバムに追加しました');
+    renderHome();
+  };
+}
+
+async function mwAlbumEditModal(id){
+  const item=await getOne('images',id);
+  if(!item||item.deletedAt)return;
+  showModal('アルバム説明を編集',
+    '<form id="mwAlbumEditForm" class="form">'+
+      '<img class="mw-album-modal-photo" src="'+esc(item.dataUrl)+'" alt="">'+
+      '<div class="field"><label>左から人物名 *</label><input name="names" required value="'+esc((item.albumNames||[]).join('、'))+'"></div>'+
+      '<div class="field"><label>場面 *</label><input name="scene" required value="'+esc(item.albumScene||'')+'"></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>種類</label><select name="type">'+['季節','イベント','仕事','旅行','日常','その他'].map(x=>'<option '+(item.albumType===x?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+        '<div class="field"><label>日付</label><input name="date" type="date" value="'+esc(item.albumDate||'')+'"></div>'+
+      '</div>'+
+      '<button class="gold-btn" type="submit">説明を保存</button>'+
+    '</form>'
+  );
+  document.getElementById('mwAlbumEditForm').onsubmit=async e=>{
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    item.albumNames=String(f.get('names')||'').split(/[、,，\n]/).map(x=>x.trim()).filter(Boolean);
+    item.albumScene=String(f.get('scene')||'').trim();
+    item.albumType=String(f.get('type')||'');
+    item.albumDate=String(f.get('date')||'');
+    item.updatedAt=now();
+    await put('images',item);
+    await log('ワールドアルバム編集','image',item.id,mwAlbumCaption(item));
+    closeModal();toast('説明を更新しました');renderHome();
+  };
+}
+
+async function mwAlbumManagerModal(){
+  const albums=mwAlbumItems(await activeImages());
+  const cards=albums.length?albums.map((item,index)=>
+    '<div class="mw-album-list-card">'+
+      '<img src="'+esc(item.dataUrl)+'" alt="'+esc(mwAlbumCaption(item))+'">'+
+      '<div class="mw-album-list-body"><b>'+(index+1)+'. '+esc(item.albumScene||'アルバム写真')+'</b>'+
+      '<div class="tiny muted">'+esc(mwAlbumCaption(item))+'</div>'+
+      '<div class="mw-album-list-actions"><button type="button" class="ghost-btn tiny" data-mw-album-edit="'+esc(item.id)+'">説明編集</button><button type="button" class="ghost-btn tiny danger" data-mw-album-delete="'+esc(item.id)+'">削除</button></div>'+
+      '</div>'+
+    '</div>'
+  ).join(''):'<div class="empty">ワールドアルバムの写真はまだありません</div>';
+  showModal('ワールドアルバム',
+    '<div class="form">'+cards+'<button type="button" class="gold-btn" id="mwAlbumAddFromList">＋ 写真を追加</button></div>'
+  );
+  document.getElementById('mwAlbumAddFromList').onclick=()=>mwAlbumAddModal();
+  document.querySelectorAll('[data-mw-album-edit]').forEach(b=>b.onclick=()=>mwAlbumEditModal(b.dataset.mwAlbumEdit));
+  document.querySelectorAll('[data-mw-album-delete]').forEach(b=>b.onclick=async()=>{
+    const item=await getOne('images',b.dataset.mwAlbumDelete);
+    if(!item||!confirm('このアルバム写真を削除しますか？'))return;
+    item.deletedAt=now();item.updatedAt=now();await put('images',item);
+    await log('ワールドアルバム削除','image',item.id,mwAlbumCaption(item));
+    localStorage.setItem('moaWorldAlbumIndex','0');
+    closeModal();toast('アルバム写真を削除しました');renderHome();
+  });
+}
+
+renderHome=async function(){
+  const members=await activeMembers();
+  const images=await activeImages();
+  const schedules=await getAll('schedules');
+  const prod=await getAll('production');
+  const albums=mwAlbumItems(images);
+  const today=toDateKey(new Date());
+  const todayEvents=schedules.filter(s=>s.date===today&&s.state!=='cancelled').sort((a,b)=>a.start.localeCompare(b.start));
+  const adopted=images.filter(i=>i.category!==MW_ALBUM_CATEGORY&&i.status?.startsWith('採用')).length;
+  const next=prod.filter(p=>p.nextCategory||p.nextAngle).slice(0,3);
+
+  app.innerHTML=
+    mwAlbumHeroHtml(albums)+
+    '<div class="section-title"><h2>現在の状況</h2><small>'+today+'</small></div>'+
+    '<div class="grid-2">'+
+      '<div class="stat"><b>'+members.length+'</b><small>登録メンバー</small></div>'+
+      '<div class="stat"><b>'+adopted+'</b><small>採用画像</small></div>'+
+      '<div class="stat"><b>'+todayEvents.length+'</b><small>今日の予定</small></div>'+
+      '<div class="stat"><b>'+next.length+'</b><small>次の制作</small></div>'+
+    '</div>'+
+    '<div class="section-title"><h2>今日の予定</h2><button class="ghost-btn tiny" data-action="schedule-add">＋追加</button></div>'+
+    '<div>'+(todayEvents.length?todayEvents.map(e=>eventCard(e,members)).join(''):'<div class="empty">今日の予定はまだありません</div>')+'</div>'+
+    '<div class="section-title"><h2>次に生成する前の確認</h2><small>制作基準</small></div>'+
+    '<div>'+(next.length?next.map(p=>productionNextCard(p,members)).join(''):'<div class="empty">「制作管理」で次の角度・基準画像を登録するとここに表示されます。</div>')+'</div>';
+
+  bindCommon();
+  document.querySelectorAll('[data-member]').forEach(card=>{
+    card.addEventListener('click',()=>{state.memberId=card.dataset.member;state.memberTab='profile';render();});
+    card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}});
+  });
+
+  const add=document.getElementById('mwAlbumAdd');if(add)add.onclick=()=>mwAlbumAddModal();
+  const manage=document.getElementById('mwAlbumManage');if(manage)manage.onclick=()=>mwAlbumManagerModal();
+  const prev=document.getElementById('mwAlbumPrev');if(prev)prev.onclick=()=>mwAlbumStep(-1);
+  const nextBtn=document.getElementById('mwAlbumNext');if(nextBtn)nextBtn.onclick=()=>mwAlbumStep(1);
+  const auto=document.getElementById('mwAlbumAuto');if(auto)auto.onclick=()=>{
+    localStorage.setItem('moaWorldAlbumAuto',mwAlbumAutoOn()?'off':'on');
+    renderHome();
+  };
+
+  const swipe=document.getElementById('mwAlbumSwipe');
+  if(swipe&&albums.length>1){
+    let sx=0,sy=0;
+    swipe.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+    swipe.addEventListener('touchend',e=>{const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.2)mwAlbumStep(dx<0?1:-1);},{passive:true});
+  }
+};
+
+if(!window.__mwAlbumRotateTimer){
+  window.__mwAlbumRotateTimer=setInterval(()=>{
+    if(state.view==='home'&&!state.memberId&&mwAlbumAutoOn()&&mwAlbumLastCount>1&&!modalRoot.innerHTML)mwAlbumStep(1);
+  },12000);
+}
