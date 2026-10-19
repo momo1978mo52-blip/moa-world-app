@@ -1,0 +1,234 @@
+// Relationship records are additive. Existing IDs, profiles, images and notes stay intact.
+function bondNameKey(value){return String(value||'').normalize('NFKC').replace(/[\s　]+/g,'').toLowerCase();}
+function bondMemberMatches(members,name){
+  const spec=MOA_BOND_EDITION.members.find(m=>m.name===name);
+  const keys=new Set([name,...(spec?.aliases||[])].map(bondNameKey));
+  return members.filter(m=>keys.has(bondNameKey(m.name)));
+}
+function bondMarkerId(){return 'bondedition_'+MOA_BOND_EDITION.version;}
+
+function prepareBondPlan(members,relations,historyRows,stamp){
+  if(historyRows.some(h=>h.id===bondMarkerId()))return {done:true,memberWrites:[],relationWrites:[],issues:[]};
+  const allMembers=members.slice(),memberWrites=[],relationWrites=[],issues=[];
+  for(const src of MOA_BOND_EDITION.members){
+    const matches=bondMemberMatches(allMembers,src.name);
+    if(matches.length){if(matches.length>1)issues.push(src.name+'：同じ名前・別名の登録が複数あります');continue;}
+    const {key,aliases,...profile}=src;
+    const row={...profile,id:'bondmem_'+key,favorite:false,personality:'',hobbies:'',memo:'',createdAt:stamp,updatedAt:stamp,deletedAt:null,bondSeedKey:key};
+    if(allMembers.some(m=>m.id===row.id)){issues.push(src.name+'：人物IDの確認が必要です');continue;}
+    allMembers.push(row);memberWrites.push(row);
+  }
+  for(const src of MOA_BOND_EDITION.relations){
+    const aMatches=bondMemberMatches(allMembers,src.a),bMatches=bondMemberMatches(allMembers,src.b);
+    if(aMatches.length!==1||bMatches.length!==1){issues.push(src.a+'・'+src.b+'：人物を一意に確認できません');continue;}
+    const a=aMatches[0],b=bMatches[0];
+    if(a.deletedAt||b.deletedAt)continue;
+    const pair=relations.filter(r=>(r.personA===a.id&&r.personB===b.id)||(r.personA===b.id&&r.personB===a.id));
+    const old=pair.find(r=>r.seedKey===src.key)||pair.find(r=>!r.deletedAt)||pair[0];
+    if(old?.deletedAt)continue;
+    if(old?.bond?.editedAt)continue;
+    const {key,a:sourceA,b:sourceB,tags,...record}=src;
+    const base=old||{id:'bondrel_'+key,personA:a.id,personB:b.id,personAName:a.name,personBName:b.name,aToB:'',bToA:'',memo:'',closeness:null,createdAt:stamp};
+    if(!old&&relations.some(r=>r.id===base.id)){issues.push(src.a+'・'+src.b+'：関係IDの確認が必要です');continue;}
+    const previousTags=Array.isArray(base.tags)?base.tags:String(base.tags||'').split(',').filter(Boolean);
+    relationWrites.push({...base,tags:[...new Set([...previousTags,...tags])],bond:{...record,key,edition:MOA_BOND_EDITION.version,recordedAt:stamp},updatedAt:stamp});
+  }
+  return {done:false,memberWrites,relationWrites,issues};
+}
+
+function migrateBondEdition(){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(['members','relations','history'],'readwrite');
+    const rows={},names=['members','relations','history'];let remaining=names.length,result;
+    tx.oncomplete=()=>resolve(result);
+    tx.onabort=()=>reject(tx.error||new Error('関係情報の保存が完了しませんでした'));
+    tx.onerror=()=>{};
+    names.forEach(name=>{
+      const req=tx.objectStore(name).getAll();
+      req.onsuccess=()=>{
+        rows[name]=req.result;
+        if(--remaining)return;
+        try{
+          const stamp=now(),plan=prepareBondPlan(rows.members,rows.relations,rows.history,stamp);result=plan;
+          if(plan.done)return;
+          const historyStore=tx.objectStore('history');
+          historyStore.put({id:'bondsnapshot_'+MOA_BOND_EDITION.version,action:'人物関係更新前の記録',targetType:'app',targetId:'world-bonds',detail:'人物と関係の更新前記録',changedAt:stamp,snapshot:{members:rows.members,relations:rows.relations}});
+          plan.memberWrites.forEach(row=>tx.objectStore('members').put(row));
+          plan.relationWrites.forEach(row=>tx.objectStore('relations').put(row));
+          historyStore.put({id:bondMarkerId(),action:'人物関係と絆の反映',targetType:'app',targetId:'world-bonds',detail:plan.relationWrites.length+'件の関係と8つの出来事を反映',changedAt:stamp,issues:plan.issues});
+        }catch(error){result=undefined;tx.abort();reject(error);}
+      };
+    });
+  });
+}
+
+const _beforeBondSeed=seed;
+seed=async function(){
+  await _beforeBondSeed();
+  try{await migrateBondEdition();state.bondMigrationError=false;}
+  catch(error){console.error('Relationship update failed',error);state.bondMigrationError=true;}
+};
+
+function bondTags(r){return Array.isArray(r.tags)?r.tags:String(r.tags||'').split(',').filter(Boolean);}
+function bondPeople(r,members=[]){
+  return [members.find(m=>m.id===r.personA)?.name||r.personAName||'人物A',members.find(m=>m.id===r.personB)?.name||r.personBName||'人物B'];
+}
+function bondLines(text){return esc(text||'').replace(/\n/g,'<br>');}
+function bondRecordHtml(r,person=null,members=[]){
+  const names=bondPeople(r,members),b=r.bond||{};
+  const title=person?(person.id===r.personA?names[1]:names[0]):names.join(' × ');
+  const part=(label,value)=>value?'<div><dt>'+esc(label)+'</dt><dd>'+bondLines(value)+'</dd></div>':'';
+  const events=Array.isArray(b.events)?b.events:[];
+  return '<article class="card bond-card">'+
+    '<div class="bond-card-heading"><h3>'+esc(title)+'</h3><button type="button" class="ghost-btn tiny" data-bond-edit="'+esc(r.id)+'">編集</button></div>'+
+    (b.label?'<div class="gold bond-label">'+esc(b.label)+'</div>':'')+
+    '<div class="badges">'+bondTags(r).map(t=>'<span class="badge">'+esc(t)+'</span>').join('')+(b.status?'<span class="badge '+(b.status==='確認済み'?'ok':'warn')+'">'+esc(b.status)+'</span>':'')+'</div>'+
+    '<dl class="bond-facts">'+part('関係の始まり',b.origin||'今回、詳しい始まりは未回収。')+
+    '<div><dt>絆が深まった出来事</dt><dd>'+(events.length?'<ul>'+events.map(t=>'<li>'+bondLines(t)+'</li>').join('')+'</ul>':'具体的な出来事は未回収。')+'</dd></div>'+
+    part('現在の距離感',b.distance||[r.aToB,r.bToA].filter(Boolean).join(' / ')||'未回収')+
+    part('これからの構想',b.plans)+part('確認したいこと',b.unresolved)+'</dl>'+
+    (r.memo?'<details class="bond-note"><summary>これまでのメモ</summary><p>'+bondLines(r.memo)+'</p></details>':'')+
+    ([r.aToB,r.bToA].some(Boolean)?'<div class="tiny muted">'+[r.aToB,r.bToA].filter(Boolean).map(esc).join(' / ')+'</div>':'')+
+    (r.closeness?'<div class="tiny muted">手入力の親密度 '+esc(r.closeness)+'/5</div>':'')+
+    (b.source?'<details class="bond-note"><summary>記録の根拠'+(b.editedAt?'・編集済み':'')+'</summary><p>'+esc(b.source)+'</p></details>':'')+
+    (!person?'<div class="actions">'+names.map((name,i)=>'<button type="button" class="ghost-btn tiny" data-bond-profile="'+esc(i?r.personB:r.personA)+'">'+esc(name)+'の関係</button>').join('')+'</div>':'')+'</article>';
+}
+
+const _beforeBondMemberTab=memberTabHtml;
+memberTabHtml=function(m,images,relations,schedules,prod){
+  if(state.memberTab!=='relations')return _beforeBondMemberTab(m,images,relations,schedules,prod);
+  const active=relations.filter(r=>!r.deletedAt);
+  return '<div class="bond-member-intro"><p class="muted">出会いから、絆が深まった出来事、今の距離感まで。</p><button type="button" class="ghost-btn" data-bond-person="'+esc(m.id)+'">'+esc(m.name)+'の相関を見る</button></div>'+
+    (active.length?active.map(r=>bondRecordHtml(r,m)).join(''):'<div class="empty">この人物の関係はまだ登録されていません。「関係追加」から記録できます。</div>');
+};
+
+function bondHomeLink(){
+  return '<section class="card bond-launch"><div><h2>人物の関係と絆</h2><p>出会い・支え合った出来事・今の距離感</p></div><button type="button" class="gold-btn" data-bond-open>関係と絆を見る</button></section>';
+}
+const _beforeBondHome=renderHome;
+renderHome=async function(){await _beforeBondHome();app.insertAdjacentHTML('afterbegin',bondHomeLink());};
+const _beforeBondMembers=renderMembers;
+renderMembers=async function(){await _beforeBondMembers();app.insertAdjacentHTML('afterbegin','<div class="bond-member-intro"><button type="button" class="ghost-btn" data-bond-open>人物の関係と絆を見る</button></div>');};
+
+const _beforeBondRender=render;
+render=async function(){
+  if(state.view==='bonds'&&!state.memberId){
+    try{await renderBonds();}
+    catch(error){console.error(error);app.innerHTML='<div class="empty">関係を読み込めませんでした。<br><button type="button" class="ghost-btn" data-bond-open>再読み込み</button></div>';}
+    return;
+  }
+  return _beforeBondRender();
+};
+
+function bondQueryMatches(text,query){return !query||bondNameKey(text).includes(bondNameKey(query));}
+function bondVisibleRows(relations,members,personId,query){
+  const ids=new Set(members.map(m=>m.id));
+  return relations.filter(r=>!r.deletedAt&&ids.has(r.personA)&&ids.has(r.personB))
+    .filter(r=>!personId||r.personA===personId||r.personB===personId)
+    .filter(r=>bondQueryMatches(JSON.stringify([bondPeople(r,members),bondTags(r),r.bond||{},r.memo||'']),query))
+    .sort((a,b)=>bondPeople(a,members).join('').localeCompare(bondPeople(b,members).join(''),'ja'));
+}
+function bondNetworkHtml(center,rows,members){
+  if(!center)return '<div class="empty">人物がまだ登録されていません。</div>';
+  const related=rows.filter(r=>r.personA===center.id||r.personB===center.id);
+  if(!related.length)return '<div class="empty">'+esc(center.name)+'の関係は、この条件では見つかりません。</div>';
+  return '<div class="bond-network" aria-label="'+esc(center.name)+'を中心とする人物相関">'+
+    '<div class="bond-network-root"><button type="button" class="gold-btn" data-bond-profile="'+esc(center.id)+'">'+esc(center.name)+'</button></div>'+
+    '<ul>'+related.map(r=>{
+      const otherId=r.personA===center.id?r.personB:r.personA,other=members.find(m=>m.id===otherId);
+      const label=r.bond?.label||bondTags(r).join('・')||'関係あり';
+      return '<li><div class="bond-network-edge"><span>'+esc(label)+'</span></div><button type="button" class="ghost-btn" data-bond-person="'+esc(otherId)+'">'+esc(other?.name||'人物')+'</button></li>';
+    }).join('')+'</ul></div><p class="tiny muted">人物名を押すと、その人を中心に切り替わります。</p>';
+}
+function bondStoryHtml(story,members){
+  const links=story.members.map(name=>{
+    const xs=bondMemberMatches(members,name).filter(m=>!m.deletedAt);
+    return xs.length===1?'<button type="button" class="ghost-btn tiny" data-bond-person="'+esc(xs[0].id)+'">'+esc(name)+'</button>':'<span class="badge">'+esc(name)+'</span>';
+  }).join('');
+  return '<article class="card bond-story"><h3>'+esc(story.title)+'</h3><div class="badges"><span class="badge '+(story.status==='確認済み'?'ok':'warn')+'">'+esc(story.status)+'</span></div><p>'+bondLines(story.body)+'</p><div class="tiny muted">関わる人物</div><div class="actions">'+links+'</div>'+(story.unresolved?'<p class="bond-note">'+bondLines(story.unresolved)+'</p>':'')+'</article>';
+}
+function bondGroupsHtml(members,personId,query){
+  const person=members.find(m=>m.id===personId);
+  const groups=MOA_BOND_EDITION.groups.filter(g=>(!person||g.members.some(n=>bondMemberMatches([person],n).length))&&bondQueryMatches(JSON.stringify(g),query));
+  if(!groups.length)return '';
+  return '<details class="card bond-groups"><summary>所属・仲間のまとまり（'+groups.length+'）</summary>'+groups.map(g=>'<section><h3>'+esc(g.title)+'</h3><p>'+esc(g.description)+'</p><div class="actions">'+g.members.map(n=>{const x=bondMemberMatches(members,n).filter(m=>!m.deletedAt);return x.length===1?'<button type="button" class="ghost-btn tiny" data-bond-person="'+esc(x[0].id)+'">'+esc(n)+'</button>':'<span class="badge">'+esc(n)+'</span>';}).join('')+'</div></section>').join('')+'</details>';
+}
+async function renderBonds(){
+  const [members,allRelations,historyRows]=await Promise.all([activeMembers(),getAll('relations'),getAll('history')]);
+  titleEl.textContent='関係と絆';
+  const mode=state.bondMode||'list';
+  const selected=members.some(m=>m.id===state.bondPerson)?state.bondPerson:'';state.bondPerson=selected;
+  const tabs=[['list','関係一覧'],['map','相関'],['stories','出来事']];
+  app.innerHTML='<button type="button" class="ghost-btn" data-bond-home>← ホーム</button>'+
+    '<section class="bond-heading"><h2>萌愛ちゃんワールドのつながり</h2><p class="muted">誰が一番かで分けず、出会いと支え合いから関係をたどる。</p></section>'+
+    (state.bondMigrationError?'<div class="card bond-note">今回の関係情報を保存できませんでした。<button type="button" class="ghost-btn" data-bond-retry>反映を再試行</button></div>':'')+
+    '<div class="bond-controls"><label for="bondPerson">人物<select id="bondPerson"><option value="">全員</option>'+members.slice().sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(m=>'<option value="'+esc(m.id)+'" '+(m.id===selected?'selected':'')+'>'+esc(m.name)+'</option>').join('')+'</select></label><label for="bondSearch">関係・出来事を検索<input id="bondSearch" type="search" value="'+esc(state.bondSearch||'')+'" placeholder="名前・空手・カフェなど"></label></div>'+
+    '<div class="tabbar" role="group" aria-label="関係の表示方法">'+tabs.map(([k,label])=>'<button type="button" class="tab-btn '+(mode===k?'active':'')+'" aria-pressed="'+(mode===k)+'" data-bond-mode="'+k+'">'+label+'</button>').join('')+'</div>'+
+    '<div id="bondResults" aria-live="polite"></div>'+
+    '<details class="card bond-checks"><summary>確認したい設定</summary>'+MOA_BOND_EDITION.checks.map(x=>'<h3>'+esc(x.title)+'</h3><p>'+esc(x.text)+'</p>').join('')+'</details>';
+  const body=document.getElementById('bondResults');
+  const draw=()=>{
+    const person=members.find(m=>m.id===state.bondPerson),query=state.bondSearch||'';
+    const rows=bondVisibleRows(allRelations,members,state.bondPerson,query);
+    if((state.bondMode||'list')==='stories'){
+      const stories=MOA_BOND_EDITION.stories.filter(s=>(!person||s.members.some(n=>bondMemberMatches([person],n).length))&&bondQueryMatches(JSON.stringify(s),query));
+      body.innerHTML='<div class="section-title"><h2>絆が見える出来事</h2><small>'+stories.length+'件</small></div>'+(stories.length?stories.map(s=>bondStoryHtml(s,members)).join(''):'<div class="empty">この条件の出来事はまだ記録されていません。</div>');
+    }else if(state.bondMode==='map'){
+      const center=person||members.find(m=>m.name==='萌愛')||members[0];
+      body.innerHTML='<div class="section-title"><h2>'+esc(center?.name||'人物')+'を中心に</h2></div>'+bondNetworkHtml(center,rows,members);
+    }else{
+      body.innerHTML='<div class="section-title"><h2>'+(person?esc(person.name)+'の関係':'人物の関係')+'</h2><small>'+rows.length+'件</small></div>'+(rows.length?rows.map(r=>bondRecordHtml(r,null,members)).join(''):'<div class="empty">この条件の関係はまだ登録されていません。</div>')+bondGroupsHtml(members,state.bondPerson,query);
+    }
+    const marker=historyRows.find(h=>h.id===bondMarkerId());
+    if(marker?.issues?.length)body.insertAdjacentHTML('beforeend','<details class="card bond-note"><summary>人物の対応を確認する項目</summary><p>'+marker.issues.map(esc).join('<br>')+'</p></details>');
+  };
+  document.getElementById('bondPerson').onchange=e=>{state.bondPerson=e.target.value;draw();};
+  document.getElementById('bondSearch').oninput=e=>{state.bondSearch=e.target.value;draw();};
+  draw();
+}
+
+async function bondEditModal(relationId,memberId){
+  const members=await activeMembers(),old=relationId?await getOne('relations',relationId):null;
+  if(!members.length){toast('先に人物を登録してください');return;}
+  if(relationId&&!old){toast('関係が見つかりません');return;}
+  const b=old?.bond||{},aId=old?.personA||memberId||members[0].id,bId=old?.personB||'';
+  const input=(name,label,value='',area=false)=>'<div class="field"><label for="bondField_'+name+'">'+label+'</label><'+(area?'textarea':'input')+' id="bondField_'+name+'" name="'+name+'"'+(area?'':' value="'+esc(value)+'"')+'>'+(area?esc(value)+'</textarea>':'')+'</div>';
+  const options=selected=>members.map(m=>'<option value="'+esc(m.id)+'" '+(m.id===selected?'selected':'')+'>'+esc(m.name)+'</option>').join('');
+  showModal(old?'関係と絆を編集':'関係と絆を追加','<form id="bondEditForm" class="form">'+
+    '<div class="field-row"><div class="field"><label for="bondPersonA">人物A</label><select id="bondPersonA" name="personA">'+options(aId)+'</select></div><div class="field"><label for="bondPersonB">人物B</label><select id="bondPersonB" name="personB"><option value="">選択してください</option>'+options(bId)+'</select></div></div>'+
+    input('label','関係の呼び方',b.label)+input('tags','関係タグ（カンマ区切り）',bondTags(old||{}).join(','))+
+    input('origin','関係の始まり',b.origin,true)+input('events','絆が深まった出来事（1行に1つ）',(b.events||[]).join('\n'),true)+input('distance','現在の距離感',b.distance,true)+input('plans','これからの構想',b.plans,true)+input('unresolved','確認したいこと',b.unresolved,true)+
+    '<div class="field"><label for="bondStatus">記録の状態</label><select id="bondStatus" name="status">'+['確認済み','構想','要確認'].map(s=>'<option '+((b.status||'確認済み')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div>'+
+    input('aToB','Aから見た関係',old?.aToB)+input('bToA','Bから見た関係',old?.bToA)+input('memo','これまでのメモ・自由メモ',old?.memo,true)+
+    '<button type="submit" class="gold-btn">保存する</button></form>');
+  document.getElementById('bondEditForm').onsubmit=async e=>{
+    e.preventDefault();const button=e.currentTarget.querySelector('[type="submit"]');if(button.disabled)return;
+    const f=new FormData(e.currentTarget),a=members.find(m=>m.id===f.get('personA')),other=members.find(m=>m.id===f.get('personB'));
+    if(!a||!other||a.id===other.id){toast('別の2人を選んでください');return;}
+    button.disabled=true;
+    try{
+      const current=old?await getOne('relations',old.id):null;
+      if(old&&(!current||current.deletedAt||current.updatedAt!==old.updatedAt)){toast('別の画面で更新されています。開き直してください');button.disabled=false;return;}
+      const stamp=now(),value=name=>String(f.get(name)||'').trim();
+      const row={...(current||{}),id:current?.id||uid('rel'),personA:a.id,personB:other.id,personAName:a.name,personBName:other.name,tags:value('tags').split(/[,、]/).map(x=>x.trim()).filter(Boolean),aToB:value('aToB'),bToA:value('bToA'),memo:value('memo'),createdAt:current?.createdAt||stamp,updatedAt:stamp,bond:{...(current?.bond||{}),label:value('label'),origin:value('origin'),events:value('events').split(/\n+/).map(x=>x.trim()).filter(Boolean),distance:value('distance'),plans:value('plans'),unresolved:value('unresolved'),status:value('status'),source:current?.bond?.source||'手入力の関係記録',editedAt:stamp}};
+      await put('relations',row);await log(old?'関係と絆の編集':'関係と絆の追加','relation',row.id,a.name+' × '+other.name);closeModal();toast('関係と絆を保存しました');render();
+    }catch(error){console.error(error);button.disabled=false;toast('保存できませんでした。もう一度お試しください');}
+  };
+}
+relationModal=function(memberId){return bondEditModal(null,memberId);};
+const _beforeBondQuickAdd=openAddForCurrentView;
+openAddForCurrentView=function(){if(state.view==='bonds'&&!state.memberId)return bondEditModal(null,state.bondPerson);return _beforeBondQuickAdd();};
+
+document.addEventListener('click',async e=>{
+  const button=e.target.closest?.('[data-bond-open],[data-bond-person],[data-bond-profile],[data-bond-edit],[data-bond-mode],[data-bond-home],[data-bond-retry]');
+  if(!button)return;
+  if(button.hasAttribute('data-bond-edit'))return bondEditModal(button.dataset.bondEdit);
+  if(button.hasAttribute('data-bond-home'))return setView('home');
+  if(button.hasAttribute('data-bond-profile')){state.memberId=button.dataset.bondProfile;state.memberTab='relations';state.view='members';await render();pushCurrentNav();return;}
+  if(button.hasAttribute('data-bond-retry')){try{await migrateBondEdition();state.bondMigrationError=false;toast('関係と絆を反映しました');}catch(error){toast('反映できませんでした。時間をおいてお試しください');}return render();}
+  if(button.hasAttribute('data-bond-mode'))state.bondMode=button.dataset.bondMode;
+  if(button.hasAttribute('data-bond-person')){state.bondPerson=button.dataset.bondPerson;state.bondSearch='';state.bondMode='map';}
+  if(button.hasAttribute('data-bond-open')){state.bondPerson='';state.bondSearch='';state.bondMode='list';}
+  state.memberId=null;state.view='bonds';document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='home'));
+  await render();pushCurrentNav();
+});
