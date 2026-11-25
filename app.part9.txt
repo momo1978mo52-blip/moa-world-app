@@ -1,0 +1,39 @@
+
+/* 2026-11-25: additive creative reference desk. No changes to existing member/image records. */
+const MOA_DESK_VERSION='2026-11-25';
+const MOA_DESK_DEFAULTS=[
+{id:'studio',group:'拠点',title:'studio BEATCRASH',status:'正式決定',body:'貸し音楽練習スタジオ。MOAProductionとは別の施設として扱う。各バンドの練習・交流・制作の拠点。'},
+{id:'label',group:'拠点',title:'MOAProduction',status:'正式決定',body:'音楽制作レーベル。BLOOD NOISE、rumera、NOIRA、Parallel World、Soul Breaker。flagBombの所属の正式確認は別途行う。'},
+{id:'flag',group:'flagBomb',title:'flagBombの音楽性',status:'正式決定',body:'疾走感を軸に、曲ごとにテンポ、編曲、音の厚みを変える。電子音を背景に限定せず、リズムの刻み・不規則性・瞬間的な停止・再加速、楽器同士の応酬を重視。全曲を同一構成に固定しない。'},
+{id:'shion',group:'flagBomb',title:'紫音（シオン）｜ボーカル',status:'正式決定',body:'歌声の基準：Clock out, brain! のコーヒーカップ画像の4:03版と直上の3:58版。明瞭な発音、歯切れのよい語り歌い、伸びやかな高音。裏声コーラスから張り上げ、裏声のロングコーラス、瞬間停止から再開する表現も重視。分析で裏声の厳密な識別は未確定。'},
+{id:'saiaku',group:'flagBomb',title:'最悪でも最高｜曲調の基準',status:'正式決定',body:'最新の4:29リマスターを曲調の基準にする。本人の聴感：細かな刻み、紫音の裏声から張り上げ、ロングコーラス、一瞬止まって再開。未来のシンセが活躍。Suno分析：最新の同尺2候補はいずれも約168.8 BPM、4/4。電子リード、タイトな低音、短い抜き差し。対象の個別テイクは要確認。'},
+{id:'clock',group:'flagBomb',title:'Clock out, brain!｜編曲比較',status:'未確認',body:'5音源を比較。紫音基準4:03（183.1 BPM）、3:58（179.8 BPM）、別3:58（181 BPM）、3:55（178.5 BPM）、3:39（143 BPM）。Suno分析による推定。別3:58のサビに弦楽器風の高域レイヤー、4:03にもシンセストリングスの可能性。生弦かどうかは未確認。'},
+{id:'miku',group:'flagBomb',title:'未来（みく）｜キーボード',status:'正式決定',body:'21歳、155cm。4台の鍵盤：正面水平61鍵、正面上段45度61鍵、右補助49鍵、左上の演出用。電子リード、シーケンス、コード、独立したフレーズを重視。4台目の鍵盤数はこの記録では未回収。'},
+{id:'yuna',group:'flagBomb',title:'カン・ユナ（강윤아）｜ベース',status:'正式決定',body:'24歳。20歳頃、日本人留学生からBLOOD NOISEのRISE AGAINを紹介され、日本の音楽に興味を持つ。歌詞を理解できなくても心を動かされた。何の音に最も惹かれたかは本人へのインタビュー設定が未決定。'},
+{id:'mascot',group:'flagBomb',title:'カエル親分・公式ロゴ',status:'正式決定',body:'公式ロゴ：白い筆文字とピンクの飛沫・X。マスコット：王冠のカエル。コラボロゴは両者の組み合わせ。キャップはフルロゴ版と文字刺繍版。'},
+{id:'rise',group:'BLOOD NOISE',title:'RISE AGAIN｜最新版',status:'正式決定',body:'意味：再び立ち上がる。11月24日のリマスター2曲、約4:40。Suno分析は135.1 BPM、4/4。芯のある女性歌唱、歪んだギター、低域とドラム、ギターソロから劇的なラスサビ。ストリングス風レイヤーの音源は未確定。'},
+{id:'noira',group:'NOIRA',title:'雨の向こうに待つ未来',status:'正式決定',body:'11月2日の最新版2曲（3:28／3:32）。Suno分析：約73.8 BPM、夜の都会的なR&B、柔らかな女性声、丸い低音、鍵盤。姫咲と礼蘭の個別声の識別は未確認。'},
+{id:'press',group:'人物確認',title:'茂逢市の広報担当',status:'未確認',body:'広報担当者の名前は未回収。カメラマン陽子（28歳）は既存台帳に登録済み。可憐は読者モデル。玲子については既存台帳の職業と最新会話のプレバ所属の整合を要確認。名前の再命名や既存人物の上書きは行わない。'},
+{id:'start',group:'制作履歴',title:'2026年11月25日｜音楽分析の開始',status:'正式決定',body:'完成音源のSuno分析を制作に活用できるようになった。歌声・楽器・曲構成の分析結果と、実際の聴感を区別して記録する。'}
+];
+const MOA_DESK_STATES=['正式決定','仮案','未確認','未設定','修正中','承認待ち'];
+const moaDeskKey=id=>'moaDesk_'+id;
+async function moaDeskRows(){const saved=(await getAll('production')).filter(r=>r.recordType==='moaDesk');const base=MOA_DESK_DEFAULTS.map(d=>({...d,...(saved.find(s=>s.id===moaDeskKey(d.id))||{}),key:d.id}));return [...base,...saved.filter(s=>!MOA_DESK_DEFAULTS.some(d=>s.id===moaDeskKey(d.id))).map(s=>({...s,key:s.id.slice('moaDesk_'.length)}))];}
+function moaDeskCard(){return '<section class="card bond-launch"><div><h2>音楽・世界設定台帳</h2><p>BEATCRASH・バンド・基準音源・人物確認・制作履歴</p><small class="muted">2026.11.25 更新</small></div><button type="button" class="gold-btn" data-moa-desk>台帳を開く</button></section>';}
+const moaDeskOldHome=renderHome;renderHome=async function(){await moaDeskOldHome();app.insertAdjacentHTML('afterbegin',moaDeskCard());};
+const moaDeskOldProduction=renderProduction;renderProduction=async function(){await moaDeskOldProduction();app.insertAdjacentHTML('afterbegin',moaDeskCard());};
+async function moaDeskOpen(){
+ const rows=await moaDeskRows();
+ showModal('音楽・世界設定台帳','<div class="form"><p class="tiny muted">既存人物・画像とは別の補足台帳。編集内容は端末に保存され、バックアップ対象になります。</p><input type="search" id="moaDeskSearch" class="search" placeholder="曲名・人物・楽器・状態で検索"><button class="gold-btn" id="moaDeskNew" type="button">＋記録を追加</button><div id="moaDeskRows"></div></div>');
+ const output=document.getElementById('moaDeskRows'),search=document.getElementById('moaDeskSearch');
+ const draw=()=>{const q=bondNameKey(search.value);const visible=rows.filter(r=>bondNameKey([r.group,r.title,r.body,r.status].join(' ')).includes(q));output.innerHTML=visible.length?visible.map(r=>'<article class="card"><div class="tiny muted">'+esc(r.group)+'</div><h3>'+esc(r.title)+'</h3><span class="badge '+(r.status==='正式決定'?'ok':'warn')+'">'+esc(r.status)+'</span><p>'+bondLines(r.body)+'</p>'+(r.updatedAt?'<p class="tiny muted">編集：'+esc(fmtDateTime(r.updatedAt))+'</p>':'')+'<button class="ghost-btn" type="button" data-moa-desk-edit="'+esc(r.key)+'">編集</button></article>').join(''):'<p class="empty">該当する記録はありません。</p>';};
+ search.oninput=draw;draw();document.getElementById('moaDeskNew').onclick=()=>moaDeskEdit(null);
+ output.onclick=e=>{const b=e.target.closest('[data-moa-desk-edit]');if(b)moaDeskEdit(rows.find(r=>r.key===b.dataset.moaDeskEdit));};
+}
+function moaDeskEdit(row){
+ const r=row||{key:uid('note'),group:'制作履歴',title:'',status:'仮案',body:''};
+ showModal(row?'記録を編集':'記録を追加','<form class="form" id="moaDeskForm"><div class="field"><label>分類<input name="group" required value="'+esc(r.group)+'"></label></div><div class="field"><label>タイトル<input name="title" required value="'+esc(r.title)+'"></label></div><div class="field"><label>状態<select name="status">'+MOA_DESK_STATES.map(s=>'<option '+(s===r.status?'selected':'')+'>'+esc(s)+'</option>').join('')+'</select></label></div><div class="field"><label>内容<textarea name="body" rows="7">'+esc(r.body)+'</textarea></label></div><button type="submit" class="gold-btn">保存</button><button type="button" class="ghost-btn" id="moaDeskBack">一覧へ戻る</button></form>');
+ document.getElementById('moaDeskBack').onclick=moaDeskOpen;
+ document.getElementById('moaDeskForm').onsubmit=async e=>{e.preventDefault();const b=e.currentTarget.querySelector('[type=submit]');b.disabled=true;const f=new FormData(e.currentTarget),v=k=>String(f.get(k)||'').trim();try{const record={id:moaDeskKey(r.key),recordType:'moaDesk',group:v('group'),title:v('title'),status:v('status'),body:v('body'),updatedAt:now()};if(!record.title||!record.group){b.disabled=false;return;}const current=await getOne('production',record.id);if(current&&current.updatedAt!==r.updatedAt){toast('別画面で更新済みです');return moaDeskOpen();}await put('production',record);await log('設定台帳の保存','moaDesk',record.id,record.title);toast('台帳に保存しました');await moaDeskOpen();}catch(error){console.error(error);b.disabled=false;toast('保存できませんでした');}};
+}
+document.addEventListener('click',e=>{if(e.target.closest('[data-moa-desk]'))moaDeskOpen().catch(error=>{console.error(error);toast('台帳を開けませんでした');});});
