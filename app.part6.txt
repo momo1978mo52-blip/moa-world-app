@@ -47,12 +47,12 @@ renderMembers=async function(){
   const jobs=['すべて',...new Set(members.map(m=>m.job).filter(Boolean))];
   const filtered=members.filter(m=>{const q=state.search.trim().toLowerCase();const hit=!q||[m.name,m.kana,m.job,m.affiliation].some(v=>String(v||'').toLowerCase().includes(q));const job=state.job==='すべて'||m.job===state.job;return hit&&job;});
   app.innerHTML=`
-    <input id="memberSearch" class="search" placeholder="名前・職業・所属で検索" value="${esc(state.search)}" />
+    <input id="memberSearch" type="text" class="search" autocomplete="off" placeholder="名前・職業・所属で検索" value="${esc(state.search)}" /><div class="actions"><button type="button" class="gold-btn" id="memberSearchGo">検索</button><button type="button" class="ghost-btn" id="memberSearchClear">クリア</button></div>
     <div class="chips">${jobs.map(j=>`<button class="chip ${state.job===j?'active':''}" data-job="${esc(j)}">${esc(j)}</button>`).join('')}</div>
     <div class="section-title"><h2>メンバー</h2><small>${filtered.length}人</small></div>
     <div>${filtered.length?filtered.map(m=>memberCard(m,profileImageFor(images.filter(i=>i.memberId===m.id)))).join(''):`<div class="empty">該当するメンバーがいません</div>`}</div>
   `;
-  document.getElementById('memberSearch').addEventListener('input',e=>{state.search=e.target.value;renderMembers()});
+  document.getElementById('memberSearchGo').onclick=()=>{state.search=document.getElementById('memberSearch').value;renderMembers();};document.getElementById('memberSearchClear').onclick=()=>{state.search='';renderMembers();};
   document.querySelectorAll('[data-job]').forEach(b=>b.addEventListener('click',()=>{state.job=b.dataset.job;renderMembers()}));
   document.querySelectorAll('[data-member]').forEach(b=>b.addEventListener('click',()=>{state.memberId=b.dataset.member;state.memberTab='profile';render()}));
 };

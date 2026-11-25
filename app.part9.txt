@@ -24,10 +24,10 @@ const moaDeskOldHome=renderHome;renderHome=async function(){await moaDeskOldHome
 const moaDeskOldProduction=renderProduction;renderProduction=async function(){await moaDeskOldProduction();app.insertAdjacentHTML('afterbegin',moaDeskCard());};
 async function moaDeskOpen(){
  const rows=await moaDeskRows();
- showModal('音楽・世界設定台帳','<div class="form"><p class="tiny muted">既存人物・画像とは別の補足台帳。編集内容は端末に保存され、バックアップ対象になります。</p><input type="search" id="moaDeskSearch" class="search" placeholder="曲名・人物・楽器・状態で検索"><button class="gold-btn" id="moaDeskNew" type="button">＋記録を追加</button><div id="moaDeskRows"></div></div>');
+ showModal('音楽・世界設定台帳','<div class="form"><p class="tiny muted">既存人物・画像とは別の補足台帳。編集内容は端末に保存され、バックアップ対象になります。</p><input type="text" id="moaDeskSearch" class="search" autocomplete="off" placeholder="曲名・人物・楽器・状態で検索"><div class="actions"><button type="button" class="gold-btn" id="moaDeskSearchGo">検索</button><button type="button" class="ghost-btn" id="moaDeskSearchClear">クリア</button></div><p class="tiny muted">文字を変換・確定してから検索を押してください。</p><button class="gold-btn" id="moaDeskNew" type="button">＋記録を追加</button><div id="moaDeskRows"></div></div>');
  const output=document.getElementById('moaDeskRows'),search=document.getElementById('moaDeskSearch');
  const draw=()=>{const q=bondNameKey(search.value);const visible=rows.filter(r=>bondNameKey([r.group,r.title,r.body,r.status].join(' ')).includes(q));output.innerHTML=visible.length?visible.map(r=>'<article class="card"><div class="tiny muted">'+esc(r.group)+'</div><h3>'+esc(r.title)+'</h3><span class="badge '+(r.status==='正式決定'?'ok':'warn')+'">'+esc(r.status)+'</span><p>'+bondLines(r.body)+'</p>'+(r.updatedAt?'<p class="tiny muted">編集：'+esc(fmtDateTime(r.updatedAt))+'</p>':'')+'<button class="ghost-btn" type="button" data-moa-desk-edit="'+esc(r.key)+'">編集</button></article>').join(''):'<p class="empty">該当する記録はありません。</p>';};
- search.oninput=draw;draw();document.getElementById('moaDeskNew').onclick=()=>moaDeskEdit(null);
+ document.getElementById("moaDeskSearchGo").onclick=()=>{search.blur();draw();};document.getElementById("moaDeskSearchClear").onclick=()=>{search.value="";draw();};draw();document.getElementById('moaDeskNew').onclick=()=>moaDeskEdit(null);
  output.onclick=e=>{const b=e.target.closest('[data-moa-desk-edit]');if(b)moaDeskEdit(rows.find(r=>r.key===b.dataset.moaDeskEdit));};
 }
 function moaDeskEdit(row){

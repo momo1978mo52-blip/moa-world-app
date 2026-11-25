@@ -162,7 +162,7 @@ async function renderBonds(){
   app.innerHTML='<button type="button" class="ghost-btn" data-bond-home>← ホーム</button>'+
     '<section class="bond-heading"><h2>萌愛ちゃんワールドのつながり</h2><p class="muted">誰が一番かで分けず、出会いと支え合いから関係をたどる。</p></section>'+
     (state.bondMigrationError?'<div class="card bond-note">今回の関係情報を保存できませんでした。<button type="button" class="ghost-btn" data-bond-retry>反映を再試行</button></div>':'')+
-    '<div class="bond-controls"><label for="bondPerson">人物<select id="bondPerson"><option value="">全員</option>'+members.slice().sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(m=>'<option value="'+esc(m.id)+'" '+(m.id===selected?'selected':'')+'>'+esc(m.name)+'</option>').join('')+'</select></label><label for="bondSearch">関係・出来事を検索<input id="bondSearch" type="search" value="'+esc(state.bondSearch||'')+'" placeholder="名前・空手・カフェなど"></label></div>'+
+    '<div class="bond-controls"><label for="bondPerson">人物<select id="bondPerson"><option value="">全員</option>'+members.slice().sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(m=>'<option value="'+esc(m.id)+'" '+(m.id===selected?'selected':'')+'>'+esc(m.name)+'</option>').join('')+'</select></label><label for="bondSearch">関係・出来事を検索<input id="bondSearch" type="text" autocomplete="off" value="'+esc(state.bondSearch||'')+'" placeholder="名前・空手・カフェなど"></label><button type="button" class="gold-btn" id="bondSearchGo">検索</button><button type="button" class="ghost-btn" id="bondSearchClear">クリア</button></div>'+
     '<div class="tabbar" role="group" aria-label="関係の表示方法">'+tabs.map(([k,label])=>'<button type="button" class="tab-btn '+(mode===k?'active':'')+'" aria-pressed="'+(mode===k)+'" data-bond-mode="'+k+'">'+label+'</button>').join('')+'</div>'+
     '<div id="bondResults" aria-live="polite"></div>'+
     '<details class="card bond-checks"><summary>確認したい設定</summary>'+MOA_BOND_EDITION.checks.map(x=>'<h3>'+esc(x.title)+'</h3><p>'+esc(x.text)+'</p>').join('')+'</details>';
@@ -183,7 +183,7 @@ async function renderBonds(){
     if(marker?.issues?.length)body.insertAdjacentHTML('beforeend','<details class="card bond-note"><summary>人物の対応を確認する項目</summary><p>'+marker.issues.map(esc).join('<br>')+'</p></details>');
   };
   document.getElementById('bondPerson').onchange=e=>{state.bondPerson=e.target.value;draw();};
-  document.getElementById('bondSearch').oninput=e=>{state.bondSearch=e.target.value;draw();};
+  document.getElementById('bondSearchGo').onclick=()=>{const input=document.getElementById('bondSearch');state.bondSearch=input.value;input.blur();draw();};document.getElementById('bondSearchClear').onclick=()=>{document.getElementById('bondSearch').value='';state.bondSearch='';draw();};
   draw();
 }
 
